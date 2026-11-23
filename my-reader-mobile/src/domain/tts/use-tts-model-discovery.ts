@@ -1,6 +1,7 @@
 import { useMutation } from "@tanstack/react-query"
 import {
   discoverQwenTtsVoices,
+  discoverTtsVoices,
   discoverTtsModels,
   getQwenTtsModels,
   type QwenTtsModel,
@@ -58,24 +59,31 @@ export function useTtsModelDiscovery() {
         ids.map(async (id) => {
           const known = catalog.find((model) => model.id === id)
           const model = newTtsModel(id, known)
-          if (draft.kind !== "qwen" || known?.voiceDiscovery === false)
+          if (draft.kind === "qwen" && known?.voiceDiscovery === false)
             return model
-          return mergeVoices(
-            model,
-            await discoverQwenTtsVoices(
-              {
-                endpoint: draft.endpoint,
-                model: id,
-                profileId: draft.clearCredential
-                  ? undefined
-                  : draft.id || undefined,
-                credential: draft.clearCredential
-                  ? undefined
-                  : draft.credential.trim() || undefined,
-              },
-              signal,
-            ),
-          )
+          if (
+            draft.kind !== "qwen" &&
+            !["miniMax", "elevenLabs", "fishAudio"].includes(draft.kind)
+          ) {
+            return model
+          }
+          const voices =
+            draft.kind === "qwen"
+              ? await discoverQwenTtsVoices(
+                  {
+                    endpoint: draft.endpoint,
+                    model: id,
+                    profileId: draft.clearCredential
+                      ? undefined
+                      : draft.id || undefined,
+                    credential: draft.clearCredential
+                      ? undefined
+                      : draft.credential.trim() || undefined,
+                  },
+                  signal,
+                )
+              : await discoverTtsVoices(previewInput(draft, model), signal)
+          return mergeVoices(model, voices)
         }),
       ),
   })

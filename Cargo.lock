@@ -4184,6 +4184,7 @@ version = "0.12.0"
 dependencies = [
  "automerge",
  "axum",
+ "base64 0.22.1",
  "chardetng",
  "chrono",
  "dunce",
@@ -4193,6 +4194,7 @@ dependencies = [
  "futures",
  "futures-util",
  "hayro",
+ "hex",
  "http",
  "image",
  "objc2-cf-network",

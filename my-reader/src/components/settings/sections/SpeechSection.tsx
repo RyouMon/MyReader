@@ -44,6 +44,7 @@ import { api } from "@/lib/tauri-api"
 import type {
   TtsConfigDto,
   TtsPlaybackPreferencesDto,
+  TtsProviderKindDto,
   TtsProviderDto,
 } from "@/lib/tauri-specta"
 import { notifyTtsConfigChanged } from "@/lib/tts/events"
@@ -64,19 +65,76 @@ function systemVoiceId(voice: SpeechSynthesisVoice): string {
   return voice.voiceURI || voice.name
 }
 
-function newProfileDraft(): ProfileDraft {
+function newProfileDraft(
+  kind: TtsProviderKindDto = "openAiCompatible",
+): ProfileDraft {
+  const defaults = providerDefaults(kind)
   return {
     id: "",
-    name: "OpenAI",
-    kind: "openAiCompatible",
-    endpoint: "https://api.openai.com/v1",
-    modelScopedVoices: false,
-    models: [newTtsModel("gpt-4o-mini-tts")],
-    voices: [""],
+    name: defaults.name,
+    kind,
+    endpoint: defaults.endpoint,
+    modelScopedVoices: defaults.modelScopedVoices,
+    models: [
+      {
+        ...newTtsModel(defaults.model),
+        voices: defaults.modelScopedVoices ? [""] : [],
+      },
+    ],
+    voices: defaults.modelScopedVoices ? [] : [""],
 
     credential: "",
     hasCredential: false,
     clearCredential: false,
+  }
+}
+
+function providerDefaults(kind: TtsProviderKindDto) {
+  switch (kind) {
+    case "qwen":
+      return { name: "Qwen", endpoint: "", model: "", modelScopedVoices: true }
+    case "miniMax":
+      return {
+        name: "MiniMax",
+        endpoint: "https://api.minimaxi.com/v1",
+        model: "speech-2.8-turbo",
+        modelScopedVoices: false,
+      }
+    case "volcengine":
+      return {
+        name: "火山引擎",
+        endpoint: "https://openspeech.bytedance.com",
+        model: "volcano_tts",
+        modelScopedVoices: true,
+      }
+    case "doubao":
+      return {
+        name: "豆包语音",
+        endpoint: "https://openspeech.bytedance.com",
+        model: "seed-tts-2.0",
+        modelScopedVoices: true,
+      }
+    case "elevenLabs":
+      return {
+        name: "ElevenLabs",
+        endpoint: "https://api.elevenlabs.io",
+        model: "eleven_multilingual_v2",
+        modelScopedVoices: false,
+      }
+    case "fishAudio":
+      return {
+        name: "Fish Audio",
+        endpoint: "https://api.fish.audio",
+        model: "s2.1-pro-free",
+        modelScopedVoices: false,
+      }
+    case "openAiCompatible":
+      return {
+        name: "OpenAI",
+        endpoint: "https://api.openai.com/v1",
+        model: "gpt-4o-mini-tts",
+        modelScopedVoices: false,
+      }
   }
 }
 
@@ -399,11 +457,7 @@ export function TtsProviderManager({
       !draft.endpoint.trim() ||
       !models.length ||
       new Set(models.map((model) => model.model)).size !== models.length ||
-      models.some(
-        (model) =>
-          !model.model ||
-          !(usesModelVoices(draft) ? model.voices : voices).length,
-      )
+      models.some((model) => !model.model)
     ) {
       setProviderError(t("settings.speech.validationRequired"))
       return
@@ -495,7 +549,7 @@ export function TtsProviderManager({
                     </div>
                   }
                   body={profile.name}
-                  detail={`${profile.kind === "qwen" ? "Qwen" : t("settings.speech.openAiCompatible")} · ${profile.endpoint}`}
+                  detail={`${providerKindLabel(profile.kind, t)} · ${profile.endpoint}`}
                   actions={
                     <RowActions
                       name={profile.name}
@@ -530,18 +584,7 @@ export function TtsProviderManager({
           loading={storedCredential.loading}
           saving={saving}
           onOpenChange={handleProviderDialogOpenChange}
-          onChooseOpenAi={() => setDraft(newProfileDraft())}
-          onChooseQwen={() => {
-            setDraft({
-              ...newProfileDraft(),
-              kind: "qwen",
-              name: "Qwen",
-              endpoint: "",
-              modelScopedVoices: true,
-              models: [newTtsModel()],
-              voices: [],
-            })
-          }}
+          onChooseKind={(kind) => setDraft(newProfileDraft(kind))}
           onBack={() => {
             setDraft(null)
             setProviderError(null)
@@ -562,8 +605,7 @@ function ProviderDialog({
   error,
   saving,
   onOpenChange,
-  onChooseOpenAi,
-  onChooseQwen,
+  onChooseKind,
   loading,
   onBack,
   onChange,
@@ -575,8 +617,7 @@ function ProviderDialog({
   error: string | null
   saving: boolean
   onOpenChange: (open: boolean) => void
-  onChooseOpenAi: () => void
-  onChooseQwen: () => void
+  onChooseKind: (kind: TtsProviderKindDto) => void
   loading: boolean
   onBack: () => void
   onChange: (draft: ProfileDraft) => void
@@ -607,16 +648,14 @@ function ProviderDialog({
         <div className="min-h-0">
           {choosingType ? (
             <div className="grid h-full content-start gap-3 overflow-y-auto px-6 py-5">
-              <FlowDialogChoice
-                icon={Server}
-                title={t("settings.speech.addOpenAi")}
-                onClick={onChooseOpenAi}
-              />
-              <FlowDialogChoice
-                icon={Volume2}
-                title="Qwen"
-                onClick={onChooseQwen}
-              />
+              {providerKinds(t).map(({ kind, title, icon: Icon }) => (
+                <FlowDialogChoice
+                  key={kind}
+                  icon={Icon}
+                  title={title}
+                  onClick={() => onChooseKind(kind)}
+                />
+              ))}
               {error ? <StatusNotice tone="error">{error}</StatusNotice> : null}
             </div>
           ) : loading ? (
@@ -871,8 +910,35 @@ function useProviderDialogCopy(draft: ProfileDraft | null) {
     ? t("settings.speech.addProvider")
     : draft.id
       ? t("settings.speech.editProvider")
-      : draft.kind === "qwen"
-        ? t("qwenTts.add", { name: "Qwen" })
-        : t("settings.speech.addOpenAi")
+      : draft.kind === "openAiCompatible"
+        ? t("settings.speech.addOpenAi")
+        : draft.kind === "qwen"
+          ? t("qwenTts.add", { name: "Qwen" })
+          : draft.name
   return { title, description: undefined }
+}
+
+function providerKinds(t: (key: string) => string) {
+  return [
+    {
+      kind: "openAiCompatible" as const,
+      title: t("settings.speech.addOpenAi"),
+      icon: Server,
+    },
+    { kind: "qwen" as const, title: "Qwen", icon: Volume2 },
+    { kind: "miniMax" as const, title: "MiniMax", icon: Volume2 },
+    { kind: "volcengine" as const, title: "火山引擎", icon: Volume2 },
+    { kind: "doubao" as const, title: "豆包语音", icon: Volume2 },
+    { kind: "elevenLabs" as const, title: "ElevenLabs", icon: Volume2 },
+    { kind: "fishAudio" as const, title: "Fish Audio", icon: Volume2 },
+  ]
+}
+
+function providerKindLabel(
+  kind: TtsProviderKindDto,
+  t: (key: string) => string,
+) {
+  return (
+    providerKinds(t).find((provider) => provider.kind === kind)?.title ?? kind
+  )
 }

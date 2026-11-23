@@ -36,7 +36,8 @@ async fn websocket_tls_reports_handshake_errors_without_a_global_crypto_provider
             endpoint,
             model: Some("qwen-audio-3.0-tts-plus".into()),
             credential_reference: None,
-            options: TtsProviderOptions::Qwen {
+            options: TtsProviderOptions {
+                kind: TtsProviderKind::Qwen,
                 response_format: TtsAudioFormat::Mp3,
                 instructions: None,
                 voices: vec!["longanhuan_v3.6".into()],

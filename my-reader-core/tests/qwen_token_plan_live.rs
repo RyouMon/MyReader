@@ -33,7 +33,8 @@ async fn token_plan_synthesizes_selected_voices_into_playable_audio() {
                 endpoint: String::new(),
                 model: Some("qwen-audio-3.0-tts-plus".into()),
                 credential_reference: None,
-                options: TtsProviderOptions::Qwen {
+                options: TtsProviderOptions {
+                    kind: TtsProviderKind::Qwen,
                     response_format: format,
                     instructions: None,
                     voices: vec![voice.into()],

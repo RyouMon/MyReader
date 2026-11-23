@@ -125,6 +125,7 @@ export const commands = {
 	probeTtsProvider: (profileId: string) => typedError<TtsProviderCapabilitiesDto, ErrorKind>(__TAURI_INVOKE("probe_tts_provider", { profileId })),
 	testTtsProvider: (requestId: string, input: UpsertTtsProviderInput, text: string, voiceId: string) => typedError<TtsAudioArtifactDto_Serialize, ErrorKind>(__TAURI_INVOKE("test_tts_provider", { requestId, input, text, voiceId })),
 	discoverTtsModels: (input: UpsertTtsProviderInput) => typedError<string[], ErrorKind>(__TAURI_INVOKE("discover_tts_models", { input })),
+	discoverTtsVoices: (input: UpsertTtsProviderInput) => typedError<TtsVoiceDto[], ErrorKind>(__TAURI_INVOKE("discover_tts_voices", { input })),
 	listTtsVoices: (profileId: string) => typedError<TtsVoiceDto[], ErrorKind>(__TAURI_INVOKE("list_tts_voices", { profileId })),
 	synthesizeTts: (input: TtsSynthesisInput) => typedError<TtsAudioArtifactDto_Serialize, ErrorKind>(__TAURI_INVOKE("synthesize_tts", { input })),
 	synthesizeTtsRequest: (requestId: string, input: TtsSynthesisInput) => typedError<TtsAudioArtifactDto_Serialize, ErrorKind>(__TAURI_INVOKE("synthesize_tts_request", { requestId, input })),
@@ -733,9 +734,14 @@ export type TtsProviderDto = {
 	hasCredential?: boolean,
 };
 
-export type TtsProviderKindDto = "openAiCompatible" | "qwen";
+export type TtsProviderKindDto = "openAiCompatible" | "qwen" | "miniMax" | "volcengine" | "doubao" | "elevenLabs" | "fishAudio";
 
-export type TtsProviderOptionsDto = { kind: "openAiCompatible"; responseFormat?: TtsAudioFormatDto; instructions?: string | null; voices?: string[] } | { kind: "qwen"; responseFormat: TtsAudioFormatDto; instructions: string | null; voices: string[] };
+export type TtsProviderOptionsDto = {
+	kind: TtsProviderKindDto,
+	responseFormat?: TtsAudioFormatDto,
+	instructions?: string | null,
+	voices?: string[],
+};
 
 export type TtsProviderProfileDto = {
 	id: string,

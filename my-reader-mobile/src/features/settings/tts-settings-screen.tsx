@@ -35,10 +35,35 @@ import { View } from "@/tw"
 
 const DEFAULT_VOICE_LANGUAGE = "und"
 const PREVIEW_LANGUAGE = "en"
+type ProviderVoiceState = { profileId: string; voices: TtsVoice[] }
+
 function engineKey(config: MobileTtsConfig): string {
   return config.defaultEngine.kind === "provider"
     ? `provider:${config.defaultEngine.profileId}`
     : "system"
+}
+
+function resolveAvailableVoices(
+  profile: MobileTtsConfig["profiles"][number] | undefined,
+  providerVoices: ProviderVoiceState | null,
+  systemVoices: SystemTtsVoice[],
+): SystemTtsVoice[] {
+  if (!profile) return systemVoices
+  if (providerVoices?.profileId === profile.id) {
+    return providerVoices.voices.map((voice) => ({
+      ...voice,
+      name: ttsVoiceLabel(voice.id, profile.voiceNames),
+    }))
+  }
+  return profile.voices.map((id) => ({
+    id,
+    name: ttsVoiceLabel(id, profile.voiceNames),
+    language: "mul",
+  }))
+}
+
+function qwenProfile(profile: MobileTtsConfig["profiles"][number] | undefined) {
+  return profile?.kind === "qwen" ? profile : undefined
 }
 
 function voiceLabel(
@@ -81,28 +106,26 @@ export default function TtsSettingsScreen() {
         )
       : undefined
   const selectedEngineKey = config ? engineKey(config) : "system"
-  const [qwenVoices, setQwenVoices] = useState<{
-    profileId: string
-    voices: TtsVoice[]
-  } | null>(null)
-  const qwenProfileId =
-    selectedProfile?.kind === "qwen" ? selectedProfile.id : undefined
-  const qwenRevision = selectedProfile?.revision
+  const [providerVoices, setProviderVoices] =
+    useState<ProviderVoiceState | null>(null)
+  const qwen = qwenProfile(selectedProfile)
+  const providerProfileId = qwen?.id
+  const providerRevision = qwen?.revision
   useEffect(() => {
-    if (!qwenProfileId) return
-    setQwenVoices(null)
+    if (!providerProfileId) return
+    setProviderVoices(null)
     let active = true
-    void listTtsVoices(qwenProfileId)
+    void listTtsVoices(providerProfileId)
       .then((voices) => {
-        if (active) setQwenVoices({ profileId: qwenProfileId, voices })
+        if (active) setProviderVoices({ profileId: providerProfileId, voices })
       })
       .catch(() => {
-        if (active) setQwenVoices(null)
+        if (active) setProviderVoices(null)
       })
     return () => {
       active = false
     }
-  }, [qwenProfileId, qwenRevision])
+  }, [providerProfileId, providerRevision])
   const selectedEngineLabel = selectedProfile
     ? `${selectedProfile.name}/${selectedProfile.model}`
     : t("settings.tts.systemEngine")
@@ -115,20 +138,8 @@ export default function TtsSettingsScreen() {
     )
   })
   const availableVoices = useMemo(
-    () =>
-      selectedProfile
-        ? qwenVoices?.profileId === selectedProfile.id
-          ? qwenVoices.voices.map((voice) => ({
-              ...voice,
-              name: ttsVoiceLabel(voice.id, selectedProfile.voiceNames),
-            }))
-          : selectedProfile.voices.map((id) => ({
-              id,
-              name: ttsVoiceLabel(id, selectedProfile.voiceNames),
-              language: "mul",
-            }))
-        : voices,
-    [selectedProfile, voices, qwenVoices],
+    () => resolveAvailableVoices(selectedProfile, providerVoices, voices),
+    [selectedProfile, voices, providerVoices],
   )
   const selectedVoiceId =
     selectedVoice?.voiceId ??

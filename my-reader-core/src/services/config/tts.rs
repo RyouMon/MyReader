@@ -89,7 +89,7 @@ pub(crate) fn validate_profile(profile: &TtsProviderProfile) -> Result<(), CoreE
             "TTS_PROFILE_NAME_REQUIRED",
         ));
     }
-    if profile.options.kind() != profile.kind {
+    if profile.options.kind != profile.kind {
         return Err(tts_error(
             TtsErrorKind::Configuration,
             "TTS_PROVIDER_OPTIONS_MISMATCH",

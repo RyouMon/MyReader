@@ -41,6 +41,18 @@ function idErrors(ids: string[], keys: string[], group: string, t: TFunction) {
   return errors
 }
 
+function optionalIdErrors(ids: string[], keys: string[], t: TFunction) {
+  const errors: Record<string, string> = {}
+  const seen = new Set<string>()
+  ids.forEach((value, index) => {
+    const id = value.trim()
+    if (!id) return
+    if (seen.has(id)) errors[keys[index]!] = t("formValidation.duplicate")
+    seen.add(id)
+  })
+  return errors
+}
+
 export function llmFormErrors(draft: LlmProviderSettings, t: TFunction) {
   const errors = {
     ...providerErrors(draft, t),
@@ -92,10 +104,9 @@ export function ttsFormErrors(draft: TtsProviderDraft, t: TFunction) {
   for (const group of groups) {
     Object.assign(
       errors,
-      idErrors(
+      optionalIdErrors(
         group.voices,
-        group.voices.map((_, i) => `${group.id}.voice.${i}`),
-        `${group.id}.voices`,
+        group.voices.map((_, index) => `${group.id}.voice.${index}`),
         t,
       ),
     )

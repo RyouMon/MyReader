@@ -53,7 +53,7 @@ impl From<TtsConfigWire> for TtsConfig {
             .providers
             .unwrap_or_else(|| value.profiles.into_iter().map(Into::into).collect());
         for provider in &mut providers {
-            provider.model_scoped_voices |= provider.kind == TtsProviderKind::Qwen;
+            provider.model_scoped_voices |= provider.kind.uses_model_scoped_voices();
         }
         Self {
             schema_version: if value.schema_version == 1 {
@@ -120,20 +120,14 @@ impl TtsProvider {
         self.models
             .iter()
             .map(|model| {
-                let options = match self.kind {
-                    TtsProviderKind::OpenAiCompatible => TtsProviderOptions::OpenAiCompatible {
-                        response_format: model.response_format,
-                        instructions: model.instructions.clone(),
-                        voices: if self.model_scoped_voices {
-                            model.voices.clone()
-                        } else {
-                            self.voices.clone()
-                        },
-                    },
-                    TtsProviderKind::Qwen => TtsProviderOptions::Qwen {
-                        response_format: model.response_format,
-                        instructions: model.instructions.clone(),
-                        voices: model.voices.clone(),
+                let options = TtsProviderOptions {
+                    kind: self.kind,
+                    response_format: model.response_format,
+                    instructions: model.instructions.clone(),
+                    voices: if self.model_scoped_voices || self.kind.uses_model_scoped_voices() {
+                        model.voices.clone()
+                    } else {
+                        self.voices.clone()
                     },
                 };
                 TtsProviderProfile {
@@ -143,7 +137,8 @@ impl TtsProvider {
                     endpoint: self.endpoint.clone(),
                     model: Some(model.model.clone()),
                     credential_reference: self.credential_reference.clone(),
-                    voice_names: if self.model_scoped_voices {
+                    voice_names: if self.model_scoped_voices || self.kind.uses_model_scoped_voices()
+                    {
                         model.voice_names.clone()
                     } else {
                         self.voice_names.clone()
@@ -158,18 +153,13 @@ impl TtsProvider {
 
 impl From<TtsProviderProfile> for TtsProvider {
     fn from(profile: TtsProviderProfile) -> Self {
-        let (response_format, instructions, voices) = match profile.options {
-            TtsProviderOptions::OpenAiCompatible {
-                response_format,
-                instructions,
-                voices,
-            }
-            | TtsProviderOptions::Qwen {
-                response_format,
-                instructions,
-                voices,
-            } => (response_format, instructions, voices),
-        };
+        let TtsProviderOptions {
+            response_format,
+            instructions,
+            voices,
+            ..
+        } = profile.options;
+        let scoped = profile.kind.uses_model_scoped_voices();
         Self {
             id: profile.id.clone(),
 
@@ -177,17 +167,13 @@ impl From<TtsProviderProfile> for TtsProvider {
             kind: profile.kind,
             endpoint: profile.endpoint,
             credential_reference: profile.credential_reference,
-            model_scoped_voices: profile.kind == TtsProviderKind::Qwen,
-            voice_names: if profile.kind == TtsProviderKind::OpenAiCompatible {
+            model_scoped_voices: scoped,
+            voice_names: if !scoped {
                 profile.voice_names.clone()
             } else {
                 BTreeMap::new()
             },
-            voices: if profile.kind == TtsProviderKind::OpenAiCompatible {
-                voices.clone()
-            } else {
-                vec![]
-            },
+            voices: if !scoped { voices.clone() } else { vec![] },
             models: vec![TtsModel {
                 id: profile.id,
 
@@ -195,16 +181,12 @@ impl From<TtsProviderProfile> for TtsProvider {
                 response_format,
                 instructions,
                 revision: profile.revision,
-                voice_names: if profile.kind == TtsProviderKind::Qwen {
+                voice_names: if scoped {
                     profile.voice_names
                 } else {
                     BTreeMap::new()
                 },
-                voices: if profile.kind == TtsProviderKind::Qwen {
-                    voices
-                } else {
-                    vec![]
-                },
+                voices: if scoped { voices } else { vec![] },
             }],
         }
     }
@@ -233,6 +215,24 @@ pub enum TtsEngineSelection {
 pub enum TtsProviderKind {
     OpenAiCompatible,
     Qwen,
+    MiniMax,
+    Volcengine,
+    Doubao,
+    ElevenLabs,
+    FishAudio,
+}
+
+impl TtsProviderKind {
+    pub const fn uses_model_scoped_voices(self) -> bool {
+        matches!(self, Self::Qwen | Self::Volcengine | Self::Doubao)
+    }
+
+    pub const fn uses_http_options(self) -> bool {
+        matches!(
+            self,
+            Self::MiniMax | Self::Volcengine | Self::Doubao | Self::ElevenLabs | Self::FishAudio
+        )
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -262,42 +262,20 @@ fn initial_profile_revision() -> u64 {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(
-    tag = "kind",
-    rename_all = "camelCase",
-    rename_all_fields = "camelCase"
-)]
-pub enum TtsProviderOptions {
-    OpenAiCompatible {
-        #[serde(default)]
-        response_format: TtsAudioFormat,
-        #[serde(default, skip_serializing_if = "Option::is_none")]
-        instructions: Option<String>,
-        #[serde(default)]
-        voices: Vec<String>,
-    },
-    Qwen {
-        #[serde(default)]
-        response_format: TtsAudioFormat,
-        #[serde(default, skip_serializing_if = "Option::is_none")]
-        instructions: Option<String>,
-        #[serde(default)]
-        voices: Vec<String>,
-    },
+#[serde(rename_all = "camelCase")]
+pub struct TtsProviderOptions {
+    pub kind: TtsProviderKind,
+    #[serde(default)]
+    pub response_format: TtsAudioFormat,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub instructions: Option<String>,
+    #[serde(default)]
+    pub voices: Vec<String>,
 }
 
 impl TtsProviderOptions {
-    pub fn kind(&self) -> TtsProviderKind {
-        match self {
-            Self::OpenAiCompatible { .. } => TtsProviderKind::OpenAiCompatible,
-            Self::Qwen { .. } => TtsProviderKind::Qwen,
-        }
-    }
-
     pub fn voices(&self) -> &[String] {
-        match self {
-            Self::OpenAiCompatible { voices, .. } | Self::Qwen { voices, .. } => voices,
-        }
+        &self.voices
     }
 }
 
@@ -499,7 +477,8 @@ mod tests {
             endpoint: "https://api.openai.com/v1".into(),
             model: Some("gpt-4o-mini-tts".into()),
             credential_reference: Some("tts:openai:api-key".into()),
-            options: TtsProviderOptions::OpenAiCompatible {
+            options: TtsProviderOptions {
+                kind: TtsProviderKind::OpenAiCompatible,
                 response_format: TtsAudioFormat::Mp3,
                 instructions: Some("Speak warmly".into()),
                 voices: vec!["reader-voice".into(), "narrator-voice".into()],

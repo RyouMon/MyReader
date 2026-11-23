@@ -12,6 +12,7 @@ required-features = ["test-support"]
 
 [dependencies]
 axum = { version = "0.8", default-features = false, features = ["http1", "tokio"] }
+base64 = "0.22"
 chardetng = "0.1"
 encoding_rs = "0.8"
 pulldown-cmark = { version = "0.13", default-features = false, features = ["html"] }
@@ -21,6 +22,7 @@ dunce.workspace = true
 eventsource-stream = "0.2.3"
 ferrous-opencc = { version = "0.4.0", default-features = false, features = ["t2s-conversion"] }
 futures-util = { version = "0.3", features = ["sink"] }
+hex = "0.4"
 http = "1"
 hayro = "0.7.1"
 image = { version = "0.25.10", default-features = false, features = ["gif", "jpeg", "png", "webp"] }

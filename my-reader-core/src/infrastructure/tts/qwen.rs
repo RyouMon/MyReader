@@ -62,7 +62,8 @@ pub(crate) fn validate_profile(profile: &TtsProviderProfile) -> Result<(), CoreE
         profile.model.as_deref().unwrap_or_default(),
         &profile.endpoint,
     )?;
-    let TtsProviderOptions::Qwen {
+    let TtsProviderOptions {
+        kind: crate::models::TtsProviderKind::Qwen,
         response_format,
         instructions,
         ..
@@ -101,7 +102,8 @@ pub(crate) async fn synthesize(
         profile.model.as_deref().unwrap_or_default(),
         &profile.endpoint,
     )?;
-    let TtsProviderOptions::Qwen {
+    let TtsProviderOptions {
+        kind: crate::models::TtsProviderKind::Qwen,
         response_format,
         instructions,
         ..
@@ -414,7 +416,8 @@ mod tests {
             endpoint: String::new(),
             model: Some("qwen3-tts-flash".into()),
             credential_reference: None,
-            options: TtsProviderOptions::Qwen {
+            options: TtsProviderOptions {
+                kind: crate::models::TtsProviderKind::Qwen,
                 response_format: TtsAudioFormat::Wav,
                 instructions: None,
                 voices: vec!["Bunny".into()],

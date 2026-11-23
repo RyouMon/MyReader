@@ -48,18 +48,26 @@ export function useTtsModelDiscovery() {
               ? catalog.find((model) => model.id === id)
               : undefined
           const model = newTtsModel(id, known)
-          if (draft.kind === "qwen" && known?.voiceDiscovery !== false) {
-            const discovered = await api.discoverQwenTtsVoices({
-              endpoint: draft.endpoint,
-              model: id,
-              profileId: draft.clearCredential ? null : draft.id || null,
-              credential: draft.clearCredential
-                ? null
-                : draft.credential.trim() || null,
-            })
-            return mergeTtsVoices(model, discovered)
+          if (draft.kind === "qwen" && known?.voiceDiscovery === false)
+            return model
+          if (
+            draft.kind !== "qwen" &&
+            !["miniMax", "elevenLabs", "fishAudio"].includes(draft.kind)
+          ) {
+            return model
           }
-          return model
+          const discovered =
+            draft.kind === "qwen"
+              ? await api.discoverQwenTtsVoices({
+                  endpoint: draft.endpoint,
+                  model: id,
+                  profileId: draft.clearCredential ? null : draft.id || null,
+                  credential: draft.clearCredential
+                    ? null
+                    : draft.credential.trim() || null,
+                })
+              : await api.discoverTtsVoices(ttsDraftInput(draft, model))
+          return mergeTtsVoices(model, discovered)
         }),
       )
     },

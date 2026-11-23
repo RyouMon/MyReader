@@ -61,6 +61,7 @@ jest.mock("@/src/services/core/tts", () => ({
   ...jest.requireActual("@/test/fixtures/qwen-tts"),
   getQwenTtsModels: jest.fn(),
   discoverTtsModels: jest.fn(),
+  discoverTtsVoices: jest.fn().mockResolvedValue([]),
   discoverQwenTtsVoices: jest.fn(),
   getTtsConfig: jest.fn(),
   getTtsCredential: jest.fn().mockResolvedValue("saved-test-key"),
@@ -288,7 +289,7 @@ it("keeps model fields visible and expands voices only in model-scoped mode", ()
   expect(screen.getByDisplayValue("alloy")).toBeTruthy()
 })
 
-it("blocks saving blank model and voice IDs in either voice scope", async () => {
+it("blocks blank model IDs while allowing an empty voice catalog", async () => {
   mount()
   fireEvent.changeText(screen.getByLabelText("providerEditor.modelId"), " ")
   save()
@@ -297,22 +298,11 @@ it("blocks saving blank model and voice IDs in either voice scope", async () => 
     screen.getByLabelText("providerEditor.modelId"),
     "manual",
   )
-  addVoice(" ")
-  save()
-  expect(tts.saveTtsProvider).not.toHaveBeenCalled()
-  fireEvent(
-    screen.getByLabelText("aiProviders.modelScopedVoices"),
-    "valueChange",
-    true,
-  )
-  save()
-  expect(tts.saveTtsProvider).not.toHaveBeenCalled()
-  fireEvent.changeText(
-    screen.getByLabelText("providerEditor.voiceId"),
-    "future-voice",
-  )
   save()
   await waitFor(() => expect(tts.saveTtsProvider).toHaveBeenCalled())
+  const { provider } = jest.mocked(tts.saveTtsProvider).mock.calls[0]![0]
+  expect(provider.voices).toEqual([])
+  expect(provider.models[0]?.voices).toEqual([])
 })
 
 it.each([

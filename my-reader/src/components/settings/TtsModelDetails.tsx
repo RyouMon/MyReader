@@ -25,7 +25,8 @@ export function TtsModelDetails({
       fieldErrors={fieldErrors}
       onChange={onVoicesChange}
       actions={
-        draft.kind === "qwen" && model.model.trim() ? (
+        ["qwen", "miniMax", "elevenLabs", "fishAudio"].includes(draft.kind) &&
+        model.model.trim() ? (
           <Button type="button" variant="ghost" size="sm" onClick={onRefresh}>
             {t("providerEditor.fetchVoices")}
           </Button>

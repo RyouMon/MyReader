@@ -154,6 +154,7 @@ pub fn run() -> Result<(), tauri::Error> {
             commands::tts::probe_tts_provider::<tauri::Wry>,
             commands::tts::test_tts_provider::<tauri::Wry>,
             commands::tts::discover_tts_models::<tauri::Wry>,
+            commands::tts::discover_tts_voices::<tauri::Wry>,
             commands::tts::list_tts_voices::<tauri::Wry>,
             commands::tts::synthesize_tts::<tauri::Wry>,
             commands::tts::synthesize_tts_request::<tauri::Wry>,

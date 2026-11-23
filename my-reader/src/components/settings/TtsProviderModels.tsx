@@ -74,9 +74,19 @@ export function TtsProviderModels({
           const additions = models.filter(
             (model) => !previous.some((old) => old.model === model.model),
           )
+          const importedVoices = additions.flatMap((model) => model.voices)
+          const voices = scoped
+            ? draft.voices
+            : [
+                ...new Set([
+                  ...draft.voices.filter((voice) => voice.trim()),
+                  ...importedVoices.filter((voice) => voice.trim()),
+                ]),
+              ]
           onChange({
             ...draft,
             models: [...previous, ...additions],
+            voices: scoped ? draft.voices : voices.length ? voices : [""],
           })
           setSelected(previous.length)
           setShowDiscovery(false)
@@ -140,6 +150,29 @@ export function TtsProviderModels({
       models: [...draft.models, newTtsModel()],
     })
     setSelected(draft.models.length)
+  }
+  const refreshShared = () => {
+    const model = draft.models[0]
+    if (!model?.model.trim() || !supportsVoiceDiscovery(draft)) return
+    const source = JSON.stringify(draft)
+    importing.mutate(
+      { draft, ids: [model.model], catalog: [] },
+      {
+        onSuccess: ([result]) => {
+          if (!result || source !== JSON.stringify(current.current)) return
+          const voices = [
+            ...new Set([
+              ...draft.voices.filter((voice) => voice.trim()),
+              ...result.voices.filter((voice) => voice.trim()),
+            ]),
+          ]
+          onChange({
+            ...current.current,
+            voices: voices.length ? voices : [""],
+          })
+        },
+      },
+    )
   }
   return (
     <FieldGroup>
@@ -246,6 +279,18 @@ export function TtsProviderModels({
             model={previewModel}
             fieldErrors={fieldErrors}
             disabled={busy}
+            actions={
+              supportsVoiceDiscovery(draft) && draft.models[0]?.model.trim() ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={refreshShared}
+                >
+                  {t("providerEditor.fetchVoices")}
+                </Button>
+              ) : null
+            }
             onChange={(voices, names) => {
               if (previewModel) updateVoices(previewModel, voices, names)
               else onChange({ ...draft, voices, voiceNames: names })
@@ -255,6 +300,10 @@ export function TtsProviderModels({
       ) : null}
     </FieldGroup>
   )
+}
+
+function supportsVoiceDiscovery(draft: TtsProviderDraft) {
+  return ["qwen", "miniMax", "elevenLabs", "fishAudio"].includes(draft.kind)
 }
 
 export function TtsTestModelSelect({

@@ -1,5 +1,6 @@
 import { useTtsRemoval } from "@/src/domain/tts/use-tts-removal-confirmation"
 import { useEffect, useRef, useState } from "react"
+import type { ReactNode } from "react"
 import { useTranslation } from "react-i18next"
 import { Button, FormSwitch, FormSelect } from "@/src/components"
 import { useThemePalette } from "@/src/design/tokens"
@@ -91,7 +92,20 @@ export function TtsProviderModels({
               !latest.models.some((old) => old.model.trim() === model.model),
           )
           const existing = latest.models.filter((model) => model.model.trim())
-          onChange({ ...latest, models: [...existing, ...unique] })
+          const importedVoices = unique.flatMap((model) => model.voices)
+          const voices = scoped
+            ? latest.voices
+            : [
+                ...new Set([
+                  ...latest.voices.filter((voice) => voice.trim()),
+                  ...importedVoices.filter((voice) => voice.trim()),
+                ]),
+              ]
+          onChange({
+            ...latest,
+            models: [...existing, ...unique],
+            voices: scoped ? latest.voices : voices.length ? voices : [""],
+          })
           setSelected(existing.length)
           setShowModels(false)
         },
@@ -134,7 +148,9 @@ export function TtsProviderModels({
         onChange(updateVoices(draft, model?.id, voices, names))
       }
       actions={
-        draft.kind === "qwen" && model?.model.trim() && index !== undefined ? (
+        supportsVoiceDiscovery(draft) &&
+        model?.model.trim() &&
+        index !== undefined ? (
           <Button
             variant="ghost"
             size="sm"
@@ -155,6 +171,27 @@ export function TtsProviderModels({
     }
     onChange({ ...draft, models: [...draft.models, model] })
     setSelected(draft.models.length)
+  }
+  const refreshShared = () => {
+    const model = draft.models[0]
+    if (!model?.model.trim() || !supportsVoiceDiscovery(draft)) return
+    const controller = startRequest()
+    importing.mutate(
+      { draft, ids: [model.model], catalog: [], signal: controller.signal },
+      {
+        onSuccess: ([result]) => {
+          if (controller.signal.aborted || !result) return
+          const latest = current.current
+          const voices = [
+            ...new Set([
+              ...latest.voices.filter((voice) => voice.trim()),
+              ...result.voices.filter((voice) => voice.trim()),
+            ]),
+          ]
+          onChange({ ...latest, voices: voices.length ? voices : [""] })
+        },
+      },
+    )
   }
   return (
     <View className="gap-3">
@@ -232,20 +269,38 @@ export function TtsProviderModels({
           draft={draft}
           validation={validation}
           onChange={onChange}
+          actions={
+            supportsVoiceDiscovery(draft) && draft.models[0]?.model.trim() ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                title={t("providerEditor.fetchVoices")}
+                icon={{ ios: "arrow.clockwise", android: "refresh" }}
+                disabled={busy}
+                onPress={refreshShared}
+              />
+            ) : undefined
+          }
         />
       ) : null}
     </View>
   )
 }
 
+function supportsVoiceDiscovery(draft: TtsProviderDraft) {
+  return ["qwen", "miniMax", "elevenLabs", "fishAudio"].includes(draft.kind)
+}
+
 function SharedVoices({
   draft,
   validation,
   onChange,
+  actions,
 }: {
   draft: TtsProviderDraft
   validation: ReturnType<typeof useFormValidation>
   onChange: (draft: TtsProviderDraft) => void
+  actions?: ReactNode
 }) {
   const { t } = useTranslation()
   const palette = useThemePalette()
@@ -264,6 +319,7 @@ function SharedVoices({
         onChange={(voices, names) =>
           onChange(updateVoices(draft, model?.id, voices, names))
         }
+        actions={actions}
       />
       {draft.models.length > 1 ? (
         <FormSelect

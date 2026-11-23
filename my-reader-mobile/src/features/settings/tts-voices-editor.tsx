@@ -136,7 +136,6 @@ export function TtsVoicesEditor({
                 <ProviderTextField
                   label={t("providerEditor.voiceId")}
                   testID={`tts-voice-id-${index}`}
-                  required
                   value={voice}
                   {...validation.field(`${group}.voice.${index}`)}
                   onChangeText={(id) => rename(index, id)}

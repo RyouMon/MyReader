@@ -16,6 +16,7 @@ use crate::{
     CoreError,
 };
 
+pub(crate) mod native;
 pub(crate) mod qwen;
 
 const MAX_AUDIO_BYTES: u64 = 32 * 1024 * 1024;
@@ -79,17 +80,63 @@ pub(crate) fn capabilities(profile: &TtsProviderProfile) -> TtsProviderCapabilit
                 },
             }
         }
+        TtsProviderKind::MiniMax
+        | TtsProviderKind::Volcengine
+        | TtsProviderKind::Doubao
+        | TtsProviderKind::ElevenLabs
+        | TtsProviderKind::FishAudio => TtsProviderCapabilities {
+            voice_discovery: matches!(
+                profile.kind,
+                TtsProviderKind::MiniMax | TtsProviderKind::ElevenLabs | TtsProviderKind::FishAudio
+            ),
+            preview: true,
+            plain_text: true,
+            ssml: false,
+            streaming: false,
+            word_timings: false,
+            synthesis_rate: !matches!(
+                profile.kind,
+                TtsProviderKind::Volcengine | TtsProviderKind::Doubao
+            ),
+            synthesis_pitch: false,
+            max_input_chars: Some(10_000),
+            output_mime_types: vec![
+                "audio/mpeg".into(),
+                "audio/wav".into(),
+                "audio/flac".into(),
+                "audio/ogg".into(),
+            ],
+        },
     }
 }
 
 pub(crate) async fn list_voices(
     profile: &TtsProviderProfile,
+    _credential: Option<&str>,
+) -> Result<Vec<TtsVoice>, CoreError> {
+    // Playback uses the catalog saved from provider settings. Refreshing it is
+    // an explicit settings action and must not restore voices the user removed.
+    Ok(configured_voices(profile))
+}
+
+pub(crate) async fn discover_voices(
+    profile: &TtsProviderProfile,
     credential: Option<&str>,
 ) -> Result<Vec<TtsVoice>, CoreError> {
-    // Playback uses the user's saved selection. Refreshing the catalog is an
-    // explicit settings action and must not restore voices the user removed.
-    let _ = credential;
-    Ok(configured_voices(profile))
+    match profile.kind {
+        TtsProviderKind::Qwen => {
+            qwen::discover_voices(
+                &profile.endpoint,
+                profile.model.as_deref().unwrap_or_default(),
+                credential,
+            )
+            .await
+        }
+        TtsProviderKind::MiniMax | TtsProviderKind::ElevenLabs | TtsProviderKind::FishAudio => {
+            native::discover_voices(profile, credential).await
+        }
+        _ => Ok(configured_voices(profile)),
+    }
 }
 
 pub(crate) async fn synthesize(
@@ -100,6 +147,11 @@ pub(crate) async fn synthesize(
     match profile.kind {
         TtsProviderKind::OpenAiCompatible => synthesize_openai(profile, request, credential).await,
         TtsProviderKind::Qwen => qwen::synthesize(profile, request, credential).await,
+        TtsProviderKind::MiniMax
+        | TtsProviderKind::Volcengine
+        | TtsProviderKind::Doubao
+        | TtsProviderKind::ElevenLabs
+        | TtsProviderKind::FishAudio => native::synthesize(profile, request, credential).await,
     }
 }
 
@@ -113,6 +165,9 @@ pub(crate) async fn discover_models(
             .into_iter()
             .map(|m| m.id)
             .collect());
+    }
+    if profile.kind.uses_http_options() {
+        return native::discover_models(profile, credential).await;
     }
     let mut url = openai_speech_endpoint(profile)?;
     let path = url.path().trim_end_matches("/audio/speech");
@@ -144,7 +199,8 @@ async fn synthesize_openai(
     request: &TtsSynthesisRequest,
     credential: Option<&str>,
 ) -> Result<SynthesizedAudio, CoreError> {
-    let TtsProviderOptions::OpenAiCompatible {
+    let TtsProviderOptions {
+        kind: TtsProviderKind::OpenAiCompatible,
         response_format,
         instructions,
         ..
@@ -189,7 +245,7 @@ async fn synthesize_openai(
     audio_response(response, Some(*response_format), Some(credential)).await
 }
 
-async fn audio_response(
+pub(crate) async fn audio_response(
     response: Response,
     expected_format: Option<TtsAudioFormat>,
     credential: Option<&str>,
@@ -199,7 +255,7 @@ async fn audio_response(
     audio_from_bytes(bytes, expected_format)
 }
 
-fn audio_from_bytes(
+pub(crate) fn audio_from_bytes(
     bytes: Vec<u8>,
     expected_format: Option<TtsAudioFormat>,
 ) -> Result<SynthesizedAudio, CoreError> {
@@ -219,7 +275,7 @@ fn audio_from_bytes(
     })
 }
 
-async fn response_bytes(
+pub(crate) async fn response_bytes(
     mut response: Response,
     too_large_code: &str,
 ) -> Result<Vec<u8>, CoreError> {
@@ -244,7 +300,10 @@ async fn response_bytes(
     Ok(bytes)
 }
 
-async fn successful(response: Response, credential: Option<&str>) -> Result<Response, CoreError> {
+pub(crate) async fn successful(
+    response: Response,
+    credential: Option<&str>,
+) -> Result<Response, CoreError> {
     let status = response.status();
     if status.is_success() {
         return Ok(response);
@@ -287,7 +346,7 @@ fn redact_credential(message: &str, credential: Option<&str>) -> String {
     }
 }
 
-fn client(timeout: Duration) -> Result<Client, CoreError> {
+pub(crate) fn client(timeout: Duration) -> Result<Client, CoreError> {
     super::http::client_builder()
         .connect_timeout(CONNECT_TIMEOUT)
         .timeout(timeout)
@@ -353,7 +412,7 @@ pub(crate) fn sniff_audio(bytes: &[u8]) -> Option<(&'static str, &'static str)> 
     }
 }
 
-fn map_reqwest_error(error: reqwest::Error) -> CoreError {
+pub(crate) fn map_reqwest_error(error: reqwest::Error) -> CoreError {
     if error.is_timeout() {
         tts_error(TtsErrorKind::Timeout, "TTS_REQUEST_TIMEOUT")
     } else if error.is_connect() {
@@ -363,7 +422,7 @@ fn map_reqwest_error(error: reqwest::Error) -> CoreError {
     }
 }
 
-fn tts_error(kind: TtsErrorKind, code: &str) -> CoreError {
+pub(crate) fn tts_error(kind: TtsErrorKind, code: &str) -> CoreError {
     CoreError::Tts {
         kind,
         message: code.to_owned(),
@@ -372,7 +431,8 @@ fn tts_error(kind: TtsErrorKind, code: &str) -> CoreError {
 
 #[cfg(test)]
 mod tests {
-    use super::sniff_audio;
+    use super::{capabilities, list_voices, sniff_audio};
+    use crate::models::{TtsAudioFormat, TtsProviderKind, TtsProviderProfile};
 
     #[test]
     fn should_recognize_supported_audio_containers() {
@@ -382,5 +442,58 @@ mod tests {
             Some(("audio/wav", "wav"))
         );
         assert_eq!(sniff_audio(b"not audio"), None);
+    }
+
+    #[test]
+    fn native_capabilities_keep_technical_choices_internal() {
+        for kind in [
+            TtsProviderKind::MiniMax,
+            TtsProviderKind::Volcengine,
+            TtsProviderKind::Doubao,
+            TtsProviderKind::ElevenLabs,
+            TtsProviderKind::FishAudio,
+        ] {
+            let profile = TtsProviderProfile {
+                id: "native".into(),
+                name: "Native".into(),
+                kind,
+                endpoint: "https://example.test".into(),
+                model: Some("model".into()),
+                credential_reference: None,
+                options: crate::models::TtsProviderOptions {
+                    kind,
+                    response_format: TtsAudioFormat::Mp3,
+                    instructions: None,
+                    voices: vec![],
+                },
+                voice_names: Default::default(),
+                revision: 1,
+            };
+            let capabilities = capabilities(&profile);
+            assert!(capabilities.preview);
+            assert!(capabilities.plain_text);
+            assert!(!capabilities.streaming);
+        }
+    }
+
+    #[tokio::test]
+    async fn voice_listing_uses_configured_catalog_without_network() {
+        let profile = TtsProviderProfile {
+            id: "native".into(),
+            name: "Native".into(),
+            kind: TtsProviderKind::OpenAiCompatible,
+            endpoint: "https://example.test".into(),
+            model: Some("model".into()),
+            credential_reference: None,
+            options: crate::models::TtsProviderOptions {
+                kind: TtsProviderKind::OpenAiCompatible,
+                response_format: TtsAudioFormat::Mp3,
+                instructions: None,
+                voices: vec!["voice".into()],
+            },
+            voice_names: Default::default(),
+            revision: 1,
+        };
+        assert_eq!(list_voices(&profile, None).await.unwrap()[0].id, "voice");
     }
 }

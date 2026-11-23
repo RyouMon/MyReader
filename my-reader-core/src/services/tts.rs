@@ -58,6 +58,13 @@ impl TtsService {
         tts::qwen::discover_voices(endpoint, model, credential).await
     }
 
+    pub async fn discover_voices(
+        profile: &TtsProviderProfile,
+        credential: Option<&str>,
+    ) -> Result<Vec<TtsVoice>, CoreError> {
+        tts::discover_voices(profile, credential).await
+    }
+
     pub async fn discover_models(
         profile: &TtsProviderProfile,
         credential: Option<&str>,
@@ -81,7 +88,7 @@ impl TtsService {
         config_path: &Path,
         mut provider: TtsProvider,
     ) -> Result<TtsConfig, CoreError> {
-        provider.model_scoped_voices |= provider.kind == TtsProviderKind::Qwen;
+        provider.model_scoped_voices |= provider.kind.uses_model_scoped_voices();
         if provider.id.trim().is_empty() {
             provider.id = Uuid::new_v4().to_string();
         }
@@ -99,7 +106,7 @@ impl TtsService {
             }
             normalize_profile(&mut profile)?;
             let mut normalized = TtsProvider::from(profile);
-            if provider.model_scoped_voices && provider.kind == TtsProviderKind::OpenAiCompatible {
+            if provider.model_scoped_voices && !provider.kind.uses_model_scoped_voices() {
                 normalized.models[0].voices = std::mem::take(&mut normalized.voices);
                 normalized.models[0].voice_names = std::mem::take(&mut normalized.voice_names);
             }
@@ -408,52 +415,48 @@ fn normalize_profile(profile: &mut TtsProviderProfile) -> Result<(), CoreError> 
     };
     profile.name = profile.name.trim().to_owned();
     if profile.name.is_empty() {
-        profile.name = if qwen { "Qwen" } else { "OpenAI" }.into();
+        profile.name = default_provider_name(profile.kind).into();
     }
     profile.endpoint = profile.endpoint.trim().trim_end_matches('/').to_owned();
     if profile.endpoint.is_empty() && !qwen {
-        profile.endpoint = "https://api.openai.com/v1".into();
+        profile.endpoint = default_provider_endpoint(profile.kind).into();
     }
     profile.model = normalize_optional(profile.model.take());
     profile.credential_reference = normalize_optional(profile.credential_reference.take());
     if !qwen {
         profile
             .model
-            .get_or_insert_with(|| "gpt-4o-mini-tts".into());
+            .get_or_insert_with(|| default_provider_model(profile.kind).into());
+    }
+    if !qwen {
+        profile.options.response_format =
+            normalized_native_format(profile.kind, profile.options.response_format);
     }
     profile
         .credential_reference
         .get_or_insert_with(|| format!("tts:{}:api-key", profile.id));
-    let (TtsProviderOptions::OpenAiCompatible {
-        instructions,
-        voices,
-        ..
-    }
-    | TtsProviderOptions::Qwen {
-        instructions,
-        voices,
-        ..
-    }) = &mut profile.options;
-    *instructions = normalize_optional(instructions.take());
+    profile.options.instructions = normalize_optional(profile.options.instructions.take());
     let mut normalized_voices = Vec::new();
-    for voice in std::mem::take(voices) {
+    for voice in std::mem::take(&mut profile.options.voices) {
         let voice = voice.trim();
         if !voice.is_empty() && !normalized_voices.iter().any(|existing| existing == voice) {
             normalized_voices.push(voice.to_owned());
         }
     }
-    *voices = normalized_voices;
+    profile.options.voices = normalized_voices;
     profile.voice_names = std::mem::take(&mut profile.voice_names)
         .into_iter()
         .filter_map(|(id, name)| {
             let id = id.trim();
             let name = name.trim();
-            (voices.iter().any(|voice| voice == id) && !name.is_empty())
+            (profile.options.voices().iter().any(|voice| voice == id) && !name.is_empty())
                 .then(|| (id.to_owned(), name.to_owned()))
         })
         .collect();
-    if let TtsProviderOptions::Qwen {
-        response_format, ..
+    if let TtsProviderOptions {
+        kind: TtsProviderKind::Qwen,
+        response_format,
+        ..
     } = &mut profile.options
     {
         let selected = tts::qwen::model(
@@ -465,14 +468,70 @@ fn normalize_profile(profile: &mut TtsProviderProfile) -> Result<(), CoreError> 
         }
     }
     profile.revision = profile.revision.max(1);
-    validate_profile(profile)?;
-    if profile.options.voices().is_empty() {
-        return Err(tts_error(
-            TtsErrorKind::Configuration,
-            "TTS_VOICES_REQUIRED",
-        ));
+    validate_profile(profile)
+}
+
+fn default_provider_name(kind: TtsProviderKind) -> &'static str {
+    match kind {
+        TtsProviderKind::OpenAiCompatible => "OpenAI",
+        TtsProviderKind::Qwen => "Qwen",
+        TtsProviderKind::MiniMax => "MiniMax",
+        TtsProviderKind::Volcengine => "Volcengine",
+        TtsProviderKind::Doubao => "Doubao",
+        TtsProviderKind::ElevenLabs => "ElevenLabs",
+        TtsProviderKind::FishAudio => "Fish Audio",
     }
-    Ok(())
+}
+
+fn default_provider_endpoint(kind: TtsProviderKind) -> &'static str {
+    match kind {
+        TtsProviderKind::OpenAiCompatible => "https://api.openai.com/v1",
+        TtsProviderKind::MiniMax => "https://api.minimaxi.com/v1",
+        TtsProviderKind::Volcengine | TtsProviderKind::Doubao => "https://openspeech.bytedance.com",
+        TtsProviderKind::ElevenLabs => "https://api.elevenlabs.io",
+        TtsProviderKind::FishAudio => "https://api.fish.audio",
+        TtsProviderKind::Qwen => "",
+    }
+}
+
+fn default_provider_model(kind: TtsProviderKind) -> &'static str {
+    match kind {
+        TtsProviderKind::OpenAiCompatible => "gpt-4o-mini-tts",
+        TtsProviderKind::MiniMax => "speech-2.8-turbo",
+        TtsProviderKind::Volcengine => "volcano_tts",
+        TtsProviderKind::Doubao => "seed-tts-2.0",
+        TtsProviderKind::ElevenLabs => "eleven_multilingual_v2",
+        TtsProviderKind::FishAudio => "s2.1-pro-free",
+        TtsProviderKind::Qwen => "",
+    }
+}
+
+fn normalized_native_format(
+    kind: TtsProviderKind,
+    format: crate::models::TtsAudioFormat,
+) -> crate::models::TtsAudioFormat {
+    use crate::models::TtsAudioFormat;
+    match kind {
+        TtsProviderKind::ElevenLabs => TtsAudioFormat::Mp3,
+        TtsProviderKind::Volcengine => match format {
+            TtsAudioFormat::Mp3 | TtsAudioFormat::Wav => format,
+            _ => TtsAudioFormat::Mp3,
+        },
+        TtsProviderKind::Doubao => match format {
+            TtsAudioFormat::Mp3 | TtsAudioFormat::Opus | TtsAudioFormat::Wav => format,
+            _ => TtsAudioFormat::Mp3,
+        },
+        TtsProviderKind::MiniMax => match format {
+            TtsAudioFormat::Mp3 | TtsAudioFormat::Wav | TtsAudioFormat::Flac => format,
+            TtsAudioFormat::Opus | TtsAudioFormat::Aac => TtsAudioFormat::Mp3,
+        },
+        TtsProviderKind::FishAudio => match format {
+            TtsAudioFormat::Mp3 | TtsAudioFormat::Opus | TtsAudioFormat::Wav => format,
+            TtsAudioFormat::Aac => TtsAudioFormat::Mp3,
+            TtsAudioFormat::Flac => TtsAudioFormat::Mp3,
+        },
+        _ => format,
+    }
 }
 
 fn configured_voice_ids(profile: &TtsProviderProfile) -> HashSet<String> {
@@ -525,6 +584,7 @@ fn validate_request_for_profile(
     request: &TtsSynthesisRequest,
 ) -> Result<(), CoreError> {
     if profile.kind != TtsProviderKind::Qwen
+        && !configured_voice_ids(profile).is_empty()
         && !configured_voice_ids(profile).contains(&request.voice_id)
     {
         return Err(tts_error(
@@ -579,7 +639,8 @@ fn reconcile_selections(config: &mut TtsConfig, previous: &[TtsProviderProfile])
             .iter()
             .find(|profile| &profile.id == profile_id)
             .is_some_and(|profile| {
-                configured_voice_ids(profile).contains(voice_id)
+                configured_voice_ids(profile).is_empty()
+                    || configured_voice_ids(profile).contains(voice_id)
                     || (profile.kind == TtsProviderKind::Qwen
                         && previous
                             .iter()
@@ -730,7 +791,8 @@ mod tests {
             endpoint,
             model: Some("gpt-4o-mini-tts".into()),
             credential_reference: Some("tts:openai:api-key".into()),
-            options: TtsProviderOptions::OpenAiCompatible {
+            options: TtsProviderOptions {
+                kind: TtsProviderKind::OpenAiCompatible,
                 response_format: TtsAudioFormat::Mp3,
                 instructions: Some("Speak warmly".into()),
                 voices: vec!["reader-voice".into(), "narrator-voice".into()],
@@ -1108,7 +1170,8 @@ mod tests {
             endpoint,
             model: Some(model.into()),
             credential_reference: Some("tts:qwen:api-key".into()),
-            options: TtsProviderOptions::Qwen {
+            options: TtsProviderOptions {
+                kind: TtsProviderKind::Qwen,
                 response_format: TtsAudioFormat::Wav,
                 instructions: None,
                 voices: vec![voice.into()],
@@ -1182,7 +1245,12 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let config_path = dir.path().join("config.json");
         let mut profile = qwen_profile(endpoint, "qwen-audio-3.0-tts-plus", "longanhuan_v3.6");
-        if let TtsProviderOptions::Qwen { instructions, .. } = &mut profile.options {
+        if let TtsProviderOptions {
+            kind: TtsProviderKind::Qwen,
+            instructions,
+            ..
+        } = &mut profile.options
+        {
             *instructions = Some("Speak calmly".into());
         }
         TtsService::upsert_profile(&config_path, profile).unwrap();
@@ -1547,7 +1615,12 @@ mod tests {
             let config_path = dir.path().join("config.json");
             let mut profile = qwen_profile(endpoint, &model.id, voice);
             if model.supports_instructions {
-                if let TtsProviderOptions::Qwen { instructions, .. } = &mut profile.options {
+                if let TtsProviderOptions {
+                    kind: TtsProviderKind::Qwen,
+                    instructions,
+                    ..
+                } = &mut profile.options
+                {
                     *instructions = Some("Speak calmly".into());
                 }
             }
@@ -1908,8 +1981,10 @@ mod tests {
             .unwrap_err()
             .to_string()
             .contains("TTS_TEXT_TOO_LONG"));
-        if let TtsProviderOptions::Qwen {
-            response_format, ..
+        if let TtsProviderOptions {
+            kind: TtsProviderKind::Qwen,
+            response_format,
+            ..
         } = &mut profile.options
         {
             *response_format = TtsAudioFormat::Mp3;
@@ -1917,7 +1992,8 @@ mod tests {
         let saved = TtsService::upsert_profile(&path, profile).unwrap();
         assert!(matches!(
             saved.profiles()[0].options,
-            TtsProviderOptions::Qwen {
+            TtsProviderOptions {
+                kind: TtsProviderKind::Qwen,
                 response_format: TtsAudioFormat::Wav,
                 ..
             }
@@ -2049,7 +2125,8 @@ mod tests {
         let directory = tempfile::tempdir().unwrap();
         let config_path = directory.path().join("config.json");
         let mut profile = openai_profile("https://api.example.test/v1".into());
-        profile.options = TtsProviderOptions::OpenAiCompatible {
+        profile.options = TtsProviderOptions {
+            kind: TtsProviderKind::OpenAiCompatible,
             response_format: TtsAudioFormat::Mp3,
             instructions: None,
             voices: vec![
@@ -2066,7 +2143,8 @@ mod tests {
 
         assert_eq!(
             config.profiles()[0].options,
-            TtsProviderOptions::OpenAiCompatible {
+            TtsProviderOptions {
+                kind: TtsProviderKind::OpenAiCompatible,
                 response_format: TtsAudioFormat::Mp3,
                 instructions: None,
                 voices: vec!["reader-voice".into(), "narrator-voice".into()],
@@ -2082,19 +2160,45 @@ mod tests {
     }
 
     #[test]
-    fn should_require_user_configured_openai_voices_and_prune_removed_mappings() {
+    fn should_allow_empty_openai_voice_catalog_and_prune_removed_mappings() {
         let directory = tempfile::tempdir().unwrap();
         let config_path = directory.path().join("config.json");
         let mut invalid_profile = openai_profile("https://api.example.test/v1".into());
-        invalid_profile.options = TtsProviderOptions::OpenAiCompatible {
+        invalid_profile.options = TtsProviderOptions {
+            kind: TtsProviderKind::OpenAiCompatible,
             response_format: TtsAudioFormat::Mp3,
             instructions: None,
             voices: Vec::new(),
         };
-        assert!(TtsService::upsert_profile(&config_path, invalid_profile)
-            .unwrap_err()
-            .to_string()
-            .contains("TTS_VOICES_REQUIRED"));
+        let empty_catalog = TtsService::upsert_profile(&config_path, invalid_profile).unwrap();
+        assert!(empty_catalog.profiles()[0].options.voices().is_empty());
+
+        let mut manual_request = request("openai", "audio/mpeg");
+        manual_request.voice_id = "manual-voice".into();
+        assert!(
+            validate_request_for_profile(&empty_catalog.profiles()[0], &manual_request,).is_ok()
+        );
+        TtsService::set_voice_for_language(
+            &config_path,
+            "manual",
+            Some(TtsVoiceRef::Provider {
+                profile_id: "openai".into(),
+                voice_id: "manual-voice".into(),
+            }),
+        )
+        .unwrap();
+        let empty_again = TtsService::upsert_profile(
+            &config_path,
+            TtsService::get_config(&config_path).unwrap().profiles()[0].clone(),
+        )
+        .unwrap();
+        assert_eq!(
+            empty_again.voice_by_language["manual"],
+            TtsVoiceRef::Provider {
+                profile_id: "openai".into(),
+                voice_id: "manual-voice".into(),
+            }
+        );
 
         let mut profile = openai_profile("https://api.example.test/v1".into());
         TtsService::upsert_profile(&config_path, profile.clone()).unwrap();
@@ -2107,7 +2211,17 @@ mod tests {
             }),
         )
         .unwrap();
-        profile.options = TtsProviderOptions::OpenAiCompatible {
+        assert_eq!(
+            TtsService::get_config(&config_path)
+                .unwrap()
+                .voice_by_language["en"],
+            TtsVoiceRef::Provider {
+                profile_id: "openai".into(),
+                voice_id: "narrator-voice".into(),
+            }
+        );
+        profile.options = TtsProviderOptions {
+            kind: TtsProviderKind::OpenAiCompatible,
             response_format: TtsAudioFormat::Mp3,
             instructions: None,
             voices: vec!["reader-voice".into()],
@@ -2116,6 +2230,18 @@ mod tests {
         let config = TtsService::upsert_profile(&config_path, profile).unwrap();
 
         assert!(!config.voice_by_language.contains_key("en"));
+    }
+
+    #[test]
+    fn native_provider_defaults_keep_volcengine_and_doubao_models_distinct() {
+        assert_eq!(
+            default_provider_model(TtsProviderKind::Volcengine),
+            "volcano_tts"
+        );
+        assert_eq!(
+            default_provider_model(TtsProviderKind::Doubao),
+            "seed-tts-2.0"
+        );
     }
 
     #[test]

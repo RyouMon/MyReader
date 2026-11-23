@@ -381,6 +381,21 @@ pub async fn tts_discover_models(
 }
 
 #[uniffi::export(async_runtime = "tokio")]
+pub async fn tts_discover_voices(
+    profile: TtsProviderProfile,
+    credential: Option<String>,
+) -> Result<Vec<TtsVoice>, CoreFfiError> {
+    Ok(
+        TtsService::discover_voices(&profile.try_into()?, credential.as_deref())
+            .await
+            .map_err(CoreFfiError::from_core)?
+            .into_iter()
+            .map(Into::into)
+            .collect(),
+    )
+}
+
+#[uniffi::export(async_runtime = "tokio")]
 pub async fn tts_preview_provider(
     profile: TtsProviderProfile,
     cache_directory: String,
@@ -482,16 +497,12 @@ impl TryFrom<TtsEngine> for TtsEngineSelection {
 
 impl From<CoreProviderProfile> for TtsProviderProfile {
     fn from(value: CoreProviderProfile) -> Self {
-        let (TtsProviderOptions::OpenAiCompatible {
+        let TtsProviderOptions {
             response_format,
             instructions,
             voices,
-        }
-        | TtsProviderOptions::Qwen {
-            response_format,
-            instructions,
-            voices,
-        }) = value.options;
+            ..
+        } = value.options;
         Self {
             id: value.id,
             name: value.name,
@@ -513,21 +524,18 @@ impl TryFrom<TtsProviderProfile> for CoreProviderProfile {
 
     fn try_from(value: TtsProviderProfile) -> Result<Self, Self::Error> {
         let kind = parse_provider_kind(&value.kind)?;
-        let options = match kind {
-            TtsProviderKind::Qwen => TtsProviderOptions::Qwen {
-                response_format: parse_audio_format(
-                    value.response_format.as_deref().unwrap_or("wav"),
-                )?,
-                instructions: value.instructions,
-                voices: value.voices,
-            },
-            TtsProviderKind::OpenAiCompatible => TtsProviderOptions::OpenAiCompatible {
-                response_format: parse_audio_format(
-                    value.response_format.as_deref().unwrap_or("mp3"),
-                )?,
-                instructions: value.instructions,
-                voices: value.voices,
-            },
+        let fallback = if kind == TtsProviderKind::Qwen {
+            "wav"
+        } else {
+            "mp3"
+        };
+        let options = TtsProviderOptions {
+            kind,
+            response_format: parse_audio_format(
+                value.response_format.as_deref().unwrap_or(fallback),
+            )?,
+            instructions: value.instructions,
+            voices: value.voices,
         };
         Ok(Self {
             id: value.id,
@@ -678,6 +686,11 @@ fn provider_kind(kind: TtsProviderKind) -> &'static str {
     match kind {
         TtsProviderKind::OpenAiCompatible => "openAiCompatible",
         TtsProviderKind::Qwen => "qwen",
+        TtsProviderKind::FishAudio => "fishAudio",
+        TtsProviderKind::ElevenLabs => "elevenLabs",
+        TtsProviderKind::Doubao => "doubao",
+        TtsProviderKind::Volcengine => "volcengine",
+        TtsProviderKind::MiniMax => "miniMax",
     }
 }
 
@@ -685,6 +698,11 @@ fn parse_provider_kind(value: &str) -> Result<TtsProviderKind, CoreFfiError> {
     match value {
         "openAiCompatible" => Ok(TtsProviderKind::OpenAiCompatible),
         "qwen" => Ok(TtsProviderKind::Qwen),
+        "fishAudio" => Ok(TtsProviderKind::FishAudio),
+        "elevenLabs" => Ok(TtsProviderKind::ElevenLabs),
+        "doubao" => Ok(TtsProviderKind::Doubao),
+        "volcengine" => Ok(TtsProviderKind::Volcengine),
+        "miniMax" => Ok(TtsProviderKind::MiniMax),
         value => Err(invalid(format!("Unsupported TTS provider: {value}"))),
     }
 }
@@ -739,7 +757,8 @@ mod tests {
                 endpoint: "https://api.openai.com/v1".into(),
                 model: Some("gpt-4o-mini-tts".into()),
                 credential_reference: Some("tts:openai:api-key".into()),
-                options: TtsProviderOptions::OpenAiCompatible {
+                options: TtsProviderOptions {
+                    kind: TtsProviderKind::OpenAiCompatible,
                     response_format: TtsAudioFormat::Mp3,
                     instructions: Some("Speak warmly".into()),
                     voices: vec!["reader-voice".into(), "narrator-voice".into()],

@@ -141,7 +141,6 @@ function VoiceRow({
           id={`${prefix}-voice-id`}
           label={t("providerEditor.voiceId")}
           value={voice}
-          required
           fullWidth
           disabled={disabled}
           error={Boolean(fieldError || error)}

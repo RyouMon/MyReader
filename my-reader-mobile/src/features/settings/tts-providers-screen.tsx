@@ -57,6 +57,18 @@ function TtsProviderList({
   profiles: MobileTtsConfig["providers"]
 }) {
   const { t } = useTranslation()
+  const providerLabel = (kind: string) =>
+    kind === "openAiCompatible"
+      ? t("settings.tts.providerKinds.openAiCompatible")
+      : kind === "qwen"
+        ? "Qwen"
+        : ({
+            miniMax: "MiniMax",
+            volcengine: "火山引擎",
+            doubao: "豆包语音",
+            elevenLabs: "ElevenLabs",
+            fishAudio: "Fish Audio",
+          }[kind] ?? kind)
   return (
     <View className="gap-3">
       {profiles.length > 0 ? (
@@ -65,7 +77,7 @@ function TtsProviderList({
             <ListRow
               key={profile.id}
               title={profile.name}
-              detail={`${profile.kind === "qwen" ? "Qwen" : t("settings.tts.providerKinds.openAiCompatible")} · ${profile.endpoint}`}
+              detail={`${providerLabel(profile.kind)} · ${profile.endpoint}`}
               isLast={index === profiles.length - 1}
               onPress={() =>
                 router.push({

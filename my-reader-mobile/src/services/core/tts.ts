@@ -19,6 +19,7 @@ import {
   ttsSynthesize,
   ttsPreviewProvider,
   ttsDiscoverModels,
+  ttsDiscoverVoices,
   ttsUpsertProfile,
   type TtsAudioArtifact,
   type TtsConfig,
@@ -42,6 +43,14 @@ import { invalidateBookNarration } from "../query/invalidate-table"
 type NamedVoices<T> = Omit<T, "voiceNames"> & {
   voiceNames?: Record<string, string>
 }
+export type TtsProviderKind =
+  | "openAiCompatible"
+  | "qwen"
+  | "miniMax"
+  | "volcengine"
+  | "doubao"
+  | "elevenLabs"
+  | "fishAudio"
 export type MobileTtsProviderProfile = NamedVoices<TtsProviderProfile> & {
   hasCredential: boolean
 }
@@ -184,6 +193,17 @@ export async function discoverTtsModels(
   )
 }
 
+export async function discoverTtsVoices(
+  input: UpsertMobileTtsProfileInput,
+  signal?: AbortSignal,
+): Promise<TtsVoice[]> {
+  return ttsDiscoverVoices(
+    draftProfile(input),
+    await draftCredential(input),
+    signal ? { signal } : undefined,
+  )
+}
+
 export async function previewTtsProvider(
   input: UpsertMobileTtsProfileInput,
   text: string,
@@ -203,10 +223,7 @@ export async function previewTtsProvider(
 export async function upsertTtsProfile(
   input: UpsertMobileTtsProfileInput,
 ): Promise<MobileTtsConfig> {
-  if (
-    input.profile.kind !== "openAiCompatible" &&
-    input.profile.kind !== "qwen"
-  ) {
+  if (!isTtsProviderKind(input.profile.kind)) {
     throw new Error(`TTS_PROVIDER_KIND_UNSUPPORTED: ${input.profile.kind}`)
   }
   const current = await ttsGetConfig(appConfigPath)
@@ -234,6 +251,18 @@ export async function upsertTtsProfile(
   }
 
   return hydrateConfig(config)
+}
+
+function isTtsProviderKind(kind: string): kind is TtsProviderKind {
+  return [
+    "openAiCompatible",
+    "qwen",
+    "miniMax",
+    "volcengine",
+    "doubao",
+    "elevenLabs",
+    "fishAudio",
+  ].includes(kind)
 }
 
 export async function saveTtsProvider(input: {

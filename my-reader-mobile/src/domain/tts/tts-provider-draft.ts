@@ -4,8 +4,11 @@ import type {
   MobileTtsProvider,
   QwenTtsModel,
   TtsVoice,
+  TtsProviderKind,
   UpsertMobileTtsProfileInput,
 } from "@/src/services/core/tts"
+
+export type { TtsProviderKind } from "@/src/services/core/tts"
 
 export type TtsProviderDraft = MobileTtsProvider & {
   credential: string
@@ -28,18 +31,75 @@ export function newTtsModel(
   }
 }
 
-export function newTtsDraft(): TtsProviderDraft {
+export function newTtsDraft(
+  kind: TtsProviderKind = "openAiCompatible",
+): TtsProviderDraft {
+  const defaults = providerDefaults(kind)
   return {
     id: "",
-    kind: "openAiCompatible",
-    name: "OpenAI",
-    endpoint: "https://api.openai.com/v1",
-    modelScopedVoices: false,
-    models: [{ ...newTtsModel("gpt-4o-mini-tts"), voices: [] }],
-    voices: [""],
+    kind,
+    name: defaults.name,
+    endpoint: defaults.endpoint,
+    modelScopedVoices: defaults.modelScopedVoices,
+    models: [
+      {
+        ...newTtsModel(defaults.model),
+        voices: defaults.modelScopedVoices ? [""] : [],
+      },
+    ],
+    voices: defaults.modelScopedVoices ? [] : [""],
     hasCredential: false,
     credential: "",
     clearCredential: false,
+  }
+}
+
+function providerDefaults(kind: TtsProviderKind) {
+  switch (kind) {
+    case "qwen":
+      return { name: "Qwen", endpoint: "", model: "", modelScopedVoices: true }
+    case "miniMax":
+      return {
+        name: "MiniMax",
+        endpoint: "https://api.minimaxi.com/v1",
+        model: "speech-2.8-turbo",
+        modelScopedVoices: false,
+      }
+    case "volcengine":
+      return {
+        name: "火山引擎",
+        endpoint: "https://openspeech.bytedance.com",
+        model: "volcano_tts",
+        modelScopedVoices: true,
+      }
+    case "doubao":
+      return {
+        name: "豆包语音",
+        endpoint: "https://openspeech.bytedance.com",
+        model: "seed-tts-2.0",
+        modelScopedVoices: true,
+      }
+    case "elevenLabs":
+      return {
+        name: "ElevenLabs",
+        endpoint: "https://api.elevenlabs.io",
+        model: "eleven_multilingual_v2",
+        modelScopedVoices: false,
+      }
+    case "fishAudio":
+      return {
+        name: "Fish Audio",
+        endpoint: "https://api.fish.audio",
+        model: "s2.1-pro-free",
+        modelScopedVoices: false,
+      }
+    case "openAiCompatible":
+      return {
+        name: "OpenAI",
+        endpoint: "https://api.openai.com/v1",
+        model: "gpt-4o-mini-tts",
+        modelScopedVoices: false,
+      }
   }
 }
 

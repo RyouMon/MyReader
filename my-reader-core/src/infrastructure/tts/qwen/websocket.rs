@@ -43,7 +43,8 @@ async fn synthesize_task(
     request: &TtsSynthesisRequest,
     credential: &str,
 ) -> Result<SynthesizedAudio, CoreError> {
-    let TtsProviderOptions::Qwen {
+    let TtsProviderOptions {
+        kind: crate::models::TtsProviderKind::Qwen,
         response_format,
         instructions,
         ..

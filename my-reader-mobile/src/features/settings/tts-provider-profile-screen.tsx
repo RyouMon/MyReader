@@ -12,7 +12,7 @@ import { showErrorAlert } from "@/src/constants/alert-with-status-bar"
 import { useThemePalette } from "@/src/design/tokens"
 import {
   newTtsDraft,
-  newTtsModel,
+  type TtsProviderKind,
   type TtsProviderDraft,
 } from "@/src/domain/tts/tts-provider-draft"
 import { useScreenHeader } from "@/src/navigation/hooks/use-screen-header"
@@ -68,30 +68,36 @@ function ProviderForm({
 
 function ProviderTypeList() {
   const { t } = useTranslation()
+  const kinds: Array<{ kind: TtsProviderKind; title: string }> = [
+    {
+      kind: "openAiCompatible",
+      title: t("settings.tts.providerKinds.openAiCompatible"),
+    },
+    { kind: "qwen", title: "Qwen" },
+    { kind: "miniMax", title: "MiniMax" },
+    { kind: "volcengine", title: "火山引擎" },
+    { kind: "doubao", title: "豆包语音" },
+    { kind: "elevenLabs", title: "ElevenLabs" },
+    { kind: "fishAudio", title: "Fish Audio" },
+  ]
   return (
     <Screen>
       <View className="gap-3">
         <SectionLabel>{t("settings.tts.providerTypeSection")}</SectionLabel>
         <SectionCard>
-          <ListRow
-            title={t("settings.tts.providerKinds.openAiCompatible")}
-            onPress={() =>
-              router.push({
-                pathname: "/tts-providers/form",
-                params: { kind: "openAiCompatible" },
-              })
-            }
-          />
-          <ListRow
-            title="Qwen"
-            isLast
-            onPress={() =>
-              router.push({
-                pathname: "/tts-providers/form",
-                params: { kind: "qwen" },
-              })
-            }
-          />
+          {kinds.map(({ kind, title }, index) => (
+            <ListRow
+              key={kind}
+              title={title}
+              isLast={index === kinds.length - 1}
+              onPress={() =>
+                router.push({
+                  pathname: "/tts-providers/form",
+                  params: { kind },
+                })
+              }
+            />
+          ))}
         </SectionCard>
       </View>
     </Screen>
@@ -107,17 +113,17 @@ export default function TtsProviderProfileScreen() {
   }>()
   const [draft, setDraft] = useState<TtsProviderDraft | null>(() => {
     if (providerId || !kind) return null
-    return kind === "qwen"
+    const providerKind = isTtsProviderKind(kind) ? kind : "openAiCompatible"
+    const next = newTtsDraft(providerKind)
+    return providerKind === "qwen"
       ? {
-          ...newTtsDraft(),
-          kind: "qwen",
-          name: "Qwen",
-          endpoint: "",
-          modelScopedVoices: true,
-          models: [{ ...newTtsModel(), responseFormat: "wav" }],
-          voices: [],
+          ...next,
+          models: next.models.map((model) => ({
+            ...model,
+            responseFormat: "wav",
+          })),
         }
-      : newTtsDraft()
+      : next
   })
   const [loading, setLoading] = useState(Boolean(providerId))
   const [saving, setSaving] = useState(false)
@@ -159,8 +165,17 @@ export default function TtsProviderProfileScreen() {
     try {
       if (!(await confirmRemoval(draft))) return
       const { credential, clearCredential, ...provider } = draft
+      const normalizedProvider = {
+        ...provider,
+        voices: provider.voices.map((voice) => voice.trim()).filter(Boolean),
+        models: provider.models.map((model) => ({
+          ...model,
+          model: model.model.trim(),
+          voices: model.voices.map((voice) => voice.trim()).filter(Boolean),
+        })),
+      }
       await saveTtsProvider({
-        provider,
+        provider: normalizedProvider,
         credential: credential.trim() || undefined,
         clearCredential,
       })
@@ -235,5 +250,18 @@ function providerTitle(
   if (choosingType) return t("settings.tts.addProvider")
   if (providerId) return t("settings.tts.editProvider")
   if (draft?.kind === "qwen") return t("qwenTts.add", { name: draft.name })
-  return t("settings.tts.addOpenAi")
+  if (draft) return draft.name
+  return t("settings.tts.addProvider")
+}
+
+function isTtsProviderKind(value: string): value is TtsProviderKind {
+  return [
+    "openAiCompatible",
+    "qwen",
+    "miniMax",
+    "volcengine",
+    "doubao",
+    "elevenLabs",
+    "fishAudio",
+  ].includes(value)
 }

@@ -545,6 +545,9 @@ uniffi_my_reader_core_ffi_fn_func_tts_discover_models(RustBuffer profile,
 /*handle*/ uint64_t uniffi_my_reader_core_ffi_fn_func_tts_discover_qwen_voices(
     RustBuffer endpoint, RustBuffer model, RustBuffer credential);
 /*handle*/ uint64_t
+uniffi_my_reader_core_ffi_fn_func_tts_discover_voices(RustBuffer profile,
+                                                      RustBuffer credential);
+/*handle*/ uint64_t
 uniffi_my_reader_core_ffi_fn_func_tts_get_config(RustBuffer config_path);
 /*handle*/ uint64_t uniffi_my_reader_core_ffi_fn_func_tts_list_voices(
     RustBuffer config_path, RustBuffer profile_id, RustBuffer credential);
@@ -876,6 +879,7 @@ uint16_t uniffi_my_reader_core_ffi_checksum_func_sync_set_library_online();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_tts_change_usage();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_tts_discover_models();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_tts_discover_qwen_voices();
+uint16_t uniffi_my_reader_core_ffi_checksum_func_tts_discover_voices();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_tts_get_config();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_tts_list_voices();
 uint16_t uniffi_my_reader_core_ffi_checksum_func_tts_preview_provider();
@@ -4506,6 +4510,18 @@ NativeMyReaderCoreFfi::NativeMyReaderCoreFfi(
                 ->cpp_uniffi_my_reader_core_ffi_fn_func_tts_discover_qwen_voices(
                     rt, thisVal, args, count);
           });
+  props["ubrn_uniffi_my_reader_core_ffi_fn_func_tts_discover_voices"] =
+      jsi::Function::createFromHostFunction(
+          rt,
+          jsi::PropNameID::forAscii(
+              rt, "ubrn_uniffi_my_reader_core_ffi_fn_func_tts_discover_voices"),
+          2,
+          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
+                 const jsi::Value *args, size_t count) -> jsi::Value {
+            return this
+                ->cpp_uniffi_my_reader_core_ffi_fn_func_tts_discover_voices(
+                    rt, thisVal, args, count);
+          });
   props["ubrn_uniffi_my_reader_core_ffi_fn_func_tts_get_config"] =
       jsi::Function::createFromHostFunction(
           rt,
@@ -7146,6 +7162,18 @@ NativeMyReaderCoreFfi::NativeMyReaderCoreFfi(
                  const jsi::Value *args, size_t count) -> jsi::Value {
             return this
                 ->cpp_uniffi_my_reader_core_ffi_checksum_func_tts_discover_qwen_voices(
+                    rt, thisVal, args, count);
+          });
+  props["ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_discover_voices"] =
+      jsi::Function::createFromHostFunction(
+          rt,
+          jsi::PropNameID::forAscii(rt, "ubrn_uniffi_my_reader_core_ffi_"
+                                        "checksum_func_tts_discover_voices"),
+          0,
+          [this](jsi::Runtime &rt, const jsi::Value &thisVal,
+                 const jsi::Value *args, size_t count) -> jsi::Value {
+            return this
+                ->cpp_uniffi_my_reader_core_ffi_checksum_func_tts_discover_voices(
                     rt, thisVal, args, count);
           });
   props["ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_get_config"] =
@@ -9858,6 +9886,19 @@ jsi::Value NativeMyReaderCoreFfi::
   return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker,
                                                          value);
 }
+jsi::Value NativeMyReaderCoreFfi::
+    cpp_uniffi_my_reader_core_ffi_fn_func_tts_discover_voices(
+        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+        size_t count) {
+  auto value = uniffi_my_reader_core_ffi_fn_func_tts_discover_voices(
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[0]),
+      uniffi::my_reader_core_ffi::Bridging<RustBuffer>::fromJs(rt, callInvoker,
+                                                               args[1]));
+
+  return uniffi_jsi::Bridging</*handle*/ uint64_t>::toJs(rt, callInvoker,
+                                                         value);
+}
 jsi::Value
 NativeMyReaderCoreFfi::cpp_uniffi_my_reader_core_ffi_fn_func_tts_get_config(
     jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
@@ -11914,6 +11955,14 @@ jsi::Value NativeMyReaderCoreFfi::
         size_t count) {
   auto value =
       uniffi_my_reader_core_ffi_checksum_func_tts_discover_qwen_voices();
+
+  return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
+}
+jsi::Value NativeMyReaderCoreFfi::
+    cpp_uniffi_my_reader_core_ffi_checksum_func_tts_discover_voices(
+        jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args,
+        size_t count) {
+  auto value = uniffi_my_reader_core_ffi_checksum_func_tts_discover_voices();
 
   return uniffi_jsi::Bridging<uint16_t>::toJs(rt, callInvoker, value);
 }

@@ -6904,6 +6904,57 @@ export async function ttsDiscoverQwenVoices(
   }
 }
 
+export async function ttsDiscoverVoices(
+  profile: TtsProviderProfile,
+  credential: string | undefined,
+  asyncOpts_?: { signal: AbortSignal },
+): Promise<Array<TtsVoice>> /*throws*/ {
+  const __stack = uniffiIsDebug ? new Error().stack : undefined;
+  try {
+    return await uniffiRustCallAsync(
+      /*rustCaller:*/ uniffiCaller,
+      /*rustFutureFunc:*/ () => {
+        return nativeModule().ubrn_uniffi_my_reader_core_ffi_fn_func_tts_discover_voices(
+          FfiConverterTypeTtsProviderProfile.lower(
+            profile,
+            nativeModule().rustbuffer_alloc,
+          ),
+          FfiConverterOptionalString.lower(
+            credential,
+            nativeModule().rustbuffer_alloc,
+          ),
+        );
+      },
+      /*pollFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_poll_rust_buffer,
+      /*cancelFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_cancel_rust_buffer,
+      /*completeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_complete_rust_buffer,
+      /*freeFunc:*/ nativeModule()
+        .ubrn_ffi_my_reader_core_ffi_rust_future_free_rust_buffer,
+      // Async returns always go through the JS-side converter: the
+      // FFI symbol returns the future handle (u64), and the user-level
+      // RustBuffer comes back via the shared `rust_future_complete_*`
+      // export. The bytes the runtime hands back must be deserialized
+      // here using the per-callable return-type converter.
+      /*liftFunc:*/ FfiConverterSequenceTypeTtsVoice.lift.bind(
+        FfiConverterSequenceTypeTtsVoice,
+      ),
+      /*liftString:*/ FfiConverterString.lift.bind(FfiConverterString),
+      /*asyncOpts:*/ asyncOpts_,
+      /*errorHandler:*/ FfiConverterTypeCoreFfiError.lift.bind(
+        FfiConverterTypeCoreFfiError,
+      ),
+    );
+  } catch (__error: any) {
+    if (uniffiIsDebug && __error instanceof Error) {
+      __error.stack = __stack;
+    }
+    throw __error;
+  }
+}
+
 export async function ttsGetConfig(
   configPath: string,
   asyncOpts_?: { signal: AbortSignal },
@@ -15686,6 +15737,14 @@ function uniffiEnsureInitialized() {
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       "uniffi_my_reader_core_ffi_checksum_func_tts_discover_qwen_voices",
+    );
+  }
+  if (
+    nativeModule().ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_discover_voices() !==
+    12056
+  ) {
+    throw new UniffiInternalError.ApiChecksumMismatch(
+      "uniffi_my_reader_core_ffi_checksum_func_tts_discover_voices",
     );
   }
   if (

@@ -894,7 +894,7 @@ it("previews a shared voice with the chosen model and preserves saved playback v
   )
 })
 
-it("shows field errors, blocks invalid URLs and clears errors when corrected or removed", async () => {
+it("shows field errors, blocks invalid URLs and saves without a voice catalog", async () => {
   const user = userEvent.setup()
   render(<TtsProvidersSection />)
   await user.click(await screen.findByRole("button", { name: "添加语音服务" }))
@@ -916,20 +916,20 @@ it("shows field errors, blocks invalid URLs and clears errors when corrected or 
   fireEvent.change(endpoint, { target: { value: "https://example.com/v1" } })
   expect(endpoint).toHaveAttribute("aria-invalid", "false")
 
-  const voice = screen.getByLabelText(/声音 ID/)
-  expect(voice).toHaveAttribute("aria-invalid", "true")
-  fireEvent.blur(voice)
-  expect(voice).toHaveAttribute("aria-invalid", "true")
-  expect(voice).toHaveAccessibleDescription("此项为必填项")
-  await user.click(screen.getByRole("button", { name: "添加声音" }))
-  fireEvent.change(screen.getAllByLabelText(/声音 ID/)[1], {
-    target: { value: "alloy" },
-  })
-  await user.click(screen.getByRole("button", { name: "删除声音 1" }))
-  expect(screen.getByLabelText(/声音 ID/)).toHaveValue("alloy")
-  expect(screen.getByLabelText(/声音 ID/)).toHaveAttribute(
-    "aria-invalid",
-    "false",
+  const voice = screen.getByLabelText(/^声音 ID$/)
+  expect(voice).toHaveAttribute("aria-invalid", "false")
+  expect(voice).not.toHaveAttribute("aria-required", "true")
+  await user.click(
+    within(screen.getByRole("dialog")).getByRole("button", {
+      name: "保存",
+    }),
+  )
+  await waitFor(() =>
+    expect(mocks.saveTtsProvider).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: expect.objectContaining({ voices: [] }),
+      }),
+    ),
   )
 })
 

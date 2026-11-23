@@ -12,21 +12,17 @@ beforeAll(async () => {
   await i18n.init({ lng: "zh-CN", resources: mobileResources })
 })
 
-it("validates editable voice IDs without imposing a catalog allowlist", () => {
+it("allows an empty voice catalog while validating configured voice IDs", () => {
   const draft = newTtsDraft()
   expect(draft.models).toHaveLength(1)
   expect(draft.voices).toEqual([""])
-  expect(ttsFormErrors(draft, i18n.t)).toEqual({
-    "shared.voice.0": "此项为必填项",
-  })
+  expect(ttsFormErrors(draft, i18n.t)).toEqual({})
   draft.voices = ["future-voice"]
   expect(ttsFormErrors(draft, i18n.t)).toEqual({})
   const scoped = setVoiceScope(draft, true)
   scoped.models.push(newTtsModel("future-model"))
   expect(scoped.models[1]!.voices).toEqual([""])
-  expect(ttsFormErrors(scoped, i18n.t)[`${scoped.models[1]!.id}.voice.0`]).toBe(
-    "此项为必填项",
-  )
+  expect(ttsFormErrors(scoped, i18n.t)).toEqual({})
   scoped.models[1]!.voices = ["custom"]
   expect(ttsFormErrors(scoped, i18n.t)).toEqual({})
 })
