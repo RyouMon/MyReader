@@ -16,7 +16,7 @@ use crate::{
     CoreError,
 };
 
-pub(crate) mod native;
+pub(crate) mod providers;
 pub(crate) mod qwen;
 
 const MAX_AUDIO_BYTES: u64 = 32 * 1024 * 1024;
@@ -133,7 +133,7 @@ pub(crate) async fn discover_voices(
             .await
         }
         TtsProviderKind::MiniMax | TtsProviderKind::ElevenLabs | TtsProviderKind::FishAudio => {
-            native::discover_voices(profile, credential).await
+            providers::discover_voices(profile, credential).await
         }
         _ => Ok(configured_voices(profile)),
     }
@@ -151,7 +151,7 @@ pub(crate) async fn synthesize(
         | TtsProviderKind::Volcengine
         | TtsProviderKind::Doubao
         | TtsProviderKind::ElevenLabs
-        | TtsProviderKind::FishAudio => native::synthesize(profile, request, credential).await,
+        | TtsProviderKind::FishAudio => providers::synthesize(profile, request, credential).await,
     }
 }
 
@@ -167,7 +167,7 @@ pub(crate) async fn discover_models(
             .collect());
     }
     if profile.kind.uses_http_options() {
-        return native::discover_models(profile, credential).await;
+        return providers::discover_models(profile, credential).await;
     }
     let mut url = openai_speech_endpoint(profile)?;
     let path = url.path().trim_end_matches("/audio/speech");
