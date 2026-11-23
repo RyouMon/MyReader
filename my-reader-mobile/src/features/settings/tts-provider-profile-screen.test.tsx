@@ -201,6 +201,98 @@ afterEach(() => {
   clients.length = 0
 })
 
+const nativeProviderCases = [
+  {
+    kind: "miniMax" as const,
+    name: "MiniMax",
+    endpoint: "https://api.minimaxi.com/v1",
+    model: "speech-2.8-turbo",
+    modelScopedVoices: false,
+    voice: "voice-minimax",
+  },
+  {
+    kind: "volcengine" as const,
+    name: "火山引擎",
+    endpoint: "https://openspeech.bytedance.com",
+    model: "volcano_tts",
+    modelScopedVoices: true,
+    voice: "voice-volcengine",
+  },
+  {
+    kind: "doubao" as const,
+    name: "豆包语音",
+    endpoint: "https://openspeech.bytedance.com",
+    model: "seed-tts-2.0",
+    modelScopedVoices: true,
+    voice: "voice-doubao",
+  },
+  {
+    kind: "elevenLabs" as const,
+    name: "ElevenLabs",
+    endpoint: "https://api.elevenlabs.io",
+    model: "eleven_multilingual_v2",
+    modelScopedVoices: false,
+    voice: "voice-elevenlabs",
+  },
+  {
+    kind: "fishAudio" as const,
+    name: "Fish Audio",
+    endpoint: "https://api.fish.audio",
+    model: "s2.1-pro-free",
+    modelScopedVoices: false,
+    voice: "voice-fish",
+  },
+]
+
+it.each(
+  nativeProviderCases,
+)("saves $name with its model and voice scope without a default voice", async ({
+  kind,
+  name,
+  endpoint,
+  model,
+  modelScopedVoices,
+  voice,
+}) => {
+  mount({ kind })
+
+  expect(screen.getByTestId("tts-provider-name").props.value).toBe(name)
+  expect(screen.getByTestId("tts-provider-endpoint").props.value).toBe(endpoint)
+  expect(screen.getByTestId("provider-model-id-0").props.value).toBe(model)
+  expect(screen.queryByText("settings.tts.defaultVoice")).toBeNull()
+
+  fireEvent.changeText(
+    screen.getByTestId("tts-provider-credential"),
+    `fixture-${kind}-key`,
+  )
+  fireEvent.changeText(screen.getByTestId("tts-voice-id-0"), voice)
+  save()
+
+  await waitFor(() => expect(tts.saveTtsProvider).toHaveBeenCalledTimes(1))
+  const input = jest.mocked(tts.saveTtsProvider).mock.calls[0]![0]
+  const provider = input.provider
+  const savedModel = provider.models[0]!
+
+  expect(provider).toEqual(
+    expect.objectContaining({
+      kind,
+      name,
+      endpoint,
+      modelScopedVoices,
+      voices: modelScopedVoices ? [] : [voice],
+    }),
+  )
+  expect(savedModel).toEqual(
+    expect.objectContaining({
+      model,
+      voices: modelScopedVoices ? [voice] : [],
+    }),
+  )
+  expect(provider).not.toHaveProperty("defaultVoice")
+  expect(savedModel).not.toHaveProperty("defaultVoice")
+  expect(input.credential).toBe(`fixture-${kind}-key`)
+})
+
 it("persists model and voice IDs, keeps a failed draft open, and exposes only per-voice previews", async () => {
   mount()
   expect(mockHeader.mock.calls.at(-1)?.[0]).not.toHaveProperty("close")

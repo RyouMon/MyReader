@@ -521,6 +521,92 @@ describe("SpeechSection", () => {
     expect(dialog.queryByLabelText("默认声音")).not.toBeInTheDocument()
   })
 
+  it.each([
+    [
+      "MiniMax",
+      "miniMax",
+      "https://api.minimaxi.com/v1",
+      "speech-2.8-turbo",
+      false,
+      "voice-minimax",
+    ],
+    [
+      "火山引擎",
+      "volcengine",
+      "https://openspeech.bytedance.com",
+      "volcano_tts",
+      true,
+      "voice-volcengine",
+    ],
+    [
+      "豆包语音",
+      "doubao",
+      "https://openspeech.bytedance.com",
+      "seed-tts-2.0",
+      true,
+      "voice-doubao",
+    ],
+    [
+      "ElevenLabs",
+      "elevenLabs",
+      "https://api.elevenlabs.io",
+      "eleven_multilingual_v2",
+      false,
+      "voice-elevenlabs",
+    ],
+    [
+      "Fish Audio",
+      "fishAudio",
+      "https://api.fish.audio",
+      "s2.1-pro-free",
+      false,
+      "voice-fish",
+    ],
+  ])("saves %s with its model and voice scope without a default voice", async (title, kind, endpoint, model, modelScopedVoices, voice) => {
+    const user = userEvent.setup()
+    render(<TtsProvidersSection />)
+    await user.click(
+      await screen.findByRole("button", { name: "添加语音服务" }),
+    )
+    await user.click(await screen.findByRole("button", { name: title }))
+
+    const dialog = within(screen.getByRole("dialog"))
+    expect(dialog.getByLabelText(/服务器地址\s*\*?$/)).toHaveValue(endpoint)
+    expect(dialog.getByLabelText(/模型 ID\s*\*?$/)).toHaveValue(model)
+    expect(dialog.queryByLabelText("默认声音")).not.toBeInTheDocument()
+    fireEvent.change(dialog.getByLabelText("API 密钥或访问令牌"), {
+      target: { value: `fixture-${kind}-key` },
+    })
+    fireEvent.change(dialog.getByLabelText(/声音 ID\s*\*?$/), {
+      target: { value: voice },
+    })
+
+    await user.click(dialog.getByRole("button", { name: "保存" }))
+    await waitFor(() => expect(mocks.saveTtsProvider).toHaveBeenCalledOnce())
+
+    const input = mocks.saveTtsProvider.mock.calls[0]![0]
+    const provider = input.provider
+    const savedModel = provider.models[0]!
+    expect(provider).toEqual(
+      expect.objectContaining({
+        kind,
+        name: title,
+        endpoint,
+        modelScopedVoices,
+        voices: modelScopedVoices ? [] : [voice],
+      }),
+    )
+    expect(savedModel).toEqual(
+      expect.objectContaining({
+        model,
+        voices: modelScopedVoices ? [voice] : [],
+      }),
+    )
+    expect(provider).not.toHaveProperty("defaultVoice")
+    expect(savedModel).not.toHaveProperty("defaultVoice")
+    expect(input.credential).toBe(`fixture-${kind}-key`)
+  })
+
   it("tests saved settings and an edited draft without saving or changing defaults", async () => {
     const profile = {
       id: "fixture",
