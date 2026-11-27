@@ -11,7 +11,11 @@ import os from "node:os"
 import path from "node:path"
 import test from "node:test"
 
-import { classifyChangedPaths, writeOutputs } from "./changed-areas.mjs"
+import {
+  classifyAppJsonChange,
+  classifyChangedPaths,
+  writeOutputs,
+} from "./changed-areas.mjs"
 
 test("classifies native and dependency changes without enabling unrelated jobs", () => {
   assert.deepEqual(
@@ -57,7 +61,9 @@ for (const [file, enabled] of [
     ["swift", "ios", "security"],
   ],
   ["my-reader-mobile/plugins/with-ios-toolchain.js", ["js", "swift", "ios"]],
+  ["my-reader-mobile/plugins/with-ios-toolchain.test.js", ["js"]],
   ["my-reader-mobile/plugins/with-android-toolchain.js", ["js", "android"]],
+  ["my-reader-mobile/plugins/with-android-toolchain.test.js", ["js"]],
   [
     "my-reader-mobile/tests/native-sharing/android/SharingImagesTest.kt",
     ["android"],
@@ -242,4 +248,196 @@ test("workflow output can be asserted without a GitHub runner", () => {
     ),
     "android=false\ncoverage=false\nios=false\njs=false\nmutation=true\nrust=false\nsecurity=true\nswift=false",
   )
+})
+
+const baseAppJson = {
+  expo: {
+    version: "0.23.1",
+    ios: {
+      supportsTablet: true,
+      infoPlist: {
+        ITSAppUsesNonExemptEncryption: false,
+      },
+    },
+    android: {
+      permissions: ["android.permission.ACCESS_NETWORK_STATE"],
+    },
+    plugins: [
+      "./plugins/with-readium-ios",
+      "./plugins/with-ios-toolchain",
+      "./plugins/with-android-desugaring",
+      "./plugins/with-android-toolchain",
+      [
+        "expo-build-properties",
+        {
+          ios: {
+            deploymentTarget: "16.4",
+            buildReactNativeFromSource: true,
+            enableSceneSupport: true,
+          },
+          android: {
+            compileSdkVersion: 37,
+            kotlinVersion: "2.3.20",
+          },
+        },
+      ],
+    ],
+  },
+}
+
+test("app.json runtime and Info.plist changes skip native coverage and iOS dependency checks", () => {
+  const after = structuredClone(baseAppJson)
+  after.expo.version = "0.23.2"
+  after.expo.ios.infoPlist.UIViewControllerBasedStatusBarAppearance = true
+  after.expo.android.permissions.push("android.permission.INTERNET")
+
+  assert.deepEqual(
+    classifyChangedPaths(["my-reader-mobile/app.json"], {
+      appJsonDiff: {
+        before: JSON.stringify(baseAppJson),
+        after: JSON.stringify(after),
+      },
+    }),
+    {
+      android: false,
+      coverage: true,
+      ios: false,
+      js: true,
+      mutation: false,
+      rust: false,
+      security: false,
+      swift: false,
+    },
+  )
+})
+
+test("app.json native build config changes enable only the affected native platform", () => {
+  const iosBuildChange = structuredClone(baseAppJson)
+  iosBuildChange.expo.plugins[4][1].ios.deploymentTarget = "17.0"
+  assert.deepEqual(
+    classifyAppJsonChange(
+      JSON.stringify(baseAppJson),
+      JSON.stringify(iosBuildChange),
+    ),
+    { swift: true, android: false },
+  )
+
+  const iosPluginChange = structuredClone(baseAppJson)
+  iosPluginChange.expo.plugins = iosPluginChange.expo.plugins.filter(
+    (entry) => entry !== "./plugins/with-readium-ios",
+  )
+  assert.deepEqual(
+    classifyAppJsonChange(
+      JSON.stringify(baseAppJson),
+      JSON.stringify(iosPluginChange),
+    ),
+    { swift: true, android: false },
+  )
+
+  const androidBuildChange = structuredClone(baseAppJson)
+  androidBuildChange.expo.plugins[4][1].android.kotlinVersion = "2.4.0"
+  assert.deepEqual(
+    classifyAppJsonChange(
+      JSON.stringify(baseAppJson),
+      JSON.stringify(androidBuildChange),
+    ),
+    { swift: false, android: true },
+  )
+
+  assert.deepEqual(classifyAppJsonChange("{invalid", "{}"), {
+    swift: true,
+    android: true,
+  })
+  assert.deepEqual(classifyChangedPaths(["my-reader-mobile/app.json"]), {
+    android: true,
+    coverage: true,
+    ios: false,
+    js: true,
+    mutation: false,
+    rust: false,
+    security: false,
+    swift: true,
+  })
+})
+
+test("PR detection inspects app.json against merge-base without picking up unrelated main changes", () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), "myreader-appjson-"))
+  const git = (...args) =>
+    execFileSync("git", args, {
+      cwd: dir,
+      encoding: "utf8",
+      stdio: "pipe",
+    }).trim()
+  const writeAppJson = (config) => {
+    const target = path.join(dir, "my-reader-mobile/app.json")
+    mkdirSync(path.dirname(target), { recursive: true })
+    writeFileSync(target, `${JSON.stringify(config, null, 2)}\n`)
+  }
+  try {
+    git("init", "-b", "main")
+    git("config", "user.name", "Quality tests")
+    git("config", "user.email", "quality@example.invalid")
+    writeAppJson(baseAppJson)
+    git("add", ".")
+    git("commit", "-m", "base")
+
+    git("checkout", "-b", "feature")
+    const prConfig = structuredClone(baseAppJson)
+    prConfig.expo.ios.infoPlist.UIViewControllerBasedStatusBarAppearance = true
+    writeAppJson(prConfig)
+    git("add", ".")
+    git("commit", "-m", "ios infoPlist change")
+    const head = git("rev-parse", "HEAD")
+
+    git("checkout", "main")
+    const mainConfig = structuredClone(baseAppJson)
+    mainConfig.expo.plugins[4][1].android.kotlinVersion = "2.4.0"
+    writeAppJson(mainConfig)
+    git("add", ".")
+    git("commit", "-m", "unrelated android build bump on main")
+    const base = git("rev-parse", "HEAD")
+
+    const eventPath = path.join(dir, "event.json")
+    const outputPath = path.join(dir, "output.txt")
+    writeFileSync(
+      eventPath,
+      JSON.stringify({
+        pull_request: {
+          base: { ref: "main", sha: base },
+          head: { ref: "fix/ios-plist", sha: head },
+        },
+      }),
+    )
+    execFileSync(
+      process.execPath,
+      [new URL("./changed-areas.mjs", import.meta.url).pathname],
+      {
+        cwd: dir,
+        env: {
+          ...process.env,
+          GITHUB_EVENT_PATH: eventPath,
+          GITHUB_OUTPUT: outputPath,
+        },
+        stdio: "pipe",
+      },
+    )
+    const result = Object.fromEntries(
+      readFileSync(outputPath, "utf8")
+        .trim()
+        .split("\n")
+        .map((line) => line.split("=")),
+    )
+    assert.deepEqual(result, {
+      android: "false",
+      coverage: "true",
+      ios: "false",
+      js: "true",
+      mutation: "false",
+      rust: "false",
+      security: "false",
+      swift: "false",
+    })
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
 })
