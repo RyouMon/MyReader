@@ -1,4 +1,4 @@
-import { Alert } from "react-native"
+import { Alert, Platform } from "react-native"
 import { setStringAsync } from "expo-clipboard"
 import { setStatusBarStyle } from "expo-status-bar"
 import i18n from "@/src/i18n"
@@ -12,14 +12,25 @@ jest.mock("expo-clipboard", () => ({
 }))
 jest.mock("expo-status-bar", () => ({ setStatusBarStyle: jest.fn() }))
 
+const originalPlatform = Platform.OS
+
+function setPlatformOs(os: "ios" | "android") {
+  Object.defineProperty(Platform, "OS", {
+    configurable: true,
+    value: os,
+  })
+}
+
 beforeEach(async () => {
   jest.useFakeTimers()
   jest.clearAllMocks()
+  setPlatformOs("android")
   jest.spyOn(Alert, "alert").mockImplementation(() => {})
   await i18n.changeLanguage("zh-CN")
   setAlertStatusBarPreferredStyle("dark")
 })
 afterEach(async () => {
+  setPlatformOs(originalPlatform as "ios" | "android")
   jest.runOnlyPendingTimers()
   jest.useRealTimers()
   jest.restoreAllMocks()
@@ -65,4 +76,16 @@ it("preserves retry and cancel actions alongside copy and restores the status ba
   expect(dismiss).toHaveBeenCalledTimes(1)
   jest.runOnlyPendingTimers()
   expect(setStatusBarStyle).toHaveBeenCalledWith("dark", true)
+})
+
+it("skips imperative expo-status-bar calls on iOS where status bar appearance is view-controller based", () => {
+  setPlatformOs("ios")
+  const dismiss = jest.fn()
+  showErrorAlert("Failed", "Details", [{ text: "OK" }], { onDismiss: dismiss })
+  const [, , buttons, options] = jest.mocked(Alert.alert).mock.calls[0]!
+  buttons?.[1]?.onPress?.()
+  options?.onDismiss?.()
+  jest.runOnlyPendingTimers()
+  expect(dismiss).toHaveBeenCalledTimes(1)
+  expect(setStatusBarStyle).not.toHaveBeenCalled()
 })

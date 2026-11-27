@@ -19,12 +19,25 @@ const mockLibrary = {
   libraryType: "myreader",
   sourceType: "local",
 }
-const mockStore = {
+const readyLoadState = {
+  status: "ready" as const,
+  libraryId: mockLibrary.id,
+  bookId: 7,
+  format: "EPUB" as const,
+  title: "Book",
+  authors: [] as string[],
+  layoutMode: "reflowable" as const,
+  epubFileUri: "file:///book.epub",
+}
+let mockLoadState: { status: "loading" } | typeof readyLoadState =
+  readyLoadState
+let mockStore = {
   activeLibraryId: mockLibrary.id,
   libraries: [mockLibrary],
   settings: defaultSettings,
 }
 let mockSurface: ComponentProps<typeof ReaderPublicationSurface>
+const mockSetOptions = jest.fn()
 const mockStartTts = jest.fn()
 const mockHistoryJump = jest.fn()
 
@@ -38,7 +51,7 @@ jest.mock("./tts/use-reading-plan", () => ({
 
 jest.mock("expo-router", () => ({
   router: { back: jest.fn(), canGoBack: () => true },
-  useNavigation: () => ({ setOptions: jest.fn() }),
+  useNavigation: () => ({ setOptions: mockSetOptions }),
   useLocalSearchParams: () => ({ id: "7", format: "EPUB" }),
   useFocusEffect: (callback: () => void | (() => void)) =>
     mockUseEffect(callback, [callback]),
@@ -75,16 +88,7 @@ jest.mock("@/src/services/query/query-client", () => ({
 }))
 jest.mock("@/src/hooks/use-book-loader", () => ({
   useBookLoader: () => ({
-    loadState: {
-      status: "ready",
-      libraryId: mockLibrary.id,
-      bookId: 7,
-      format: "EPUB",
-      title: "Book",
-      authors: [],
-      layoutMode: "reflowable",
-      epubFileUri: "file:///book.epub",
-    },
+    loadState: mockLoadState,
   }),
 }))
 jest.mock("@/src/hooks/use-reader-navigation-history", () => ({
@@ -258,5 +262,84 @@ describe("ReaderScreen progress at the native boundary", () => {
       expect.any(Object),
     )
     expect(router.back).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe("ReaderScreen status bar sync", () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+    mockLoadState = readyLoadState
+    mockStore = {
+      activeLibraryId: mockLibrary.id,
+      libraries: [mockLibrary],
+      settings: defaultSettings,
+    }
+  })
+
+  afterEach(() => {
+    cleanup()
+    jest.restoreAllMocks()
+  })
+
+  it("keeps the status bar visible while the book is still loading", () => {
+    mockLoadState = { status: "loading" }
+    render(<ReaderScreen />)
+
+    expect(mockSetOptions).toHaveBeenLastCalledWith({
+      statusBarAnimation: "none",
+      statusBarHidden: false,
+      statusBarStyle: "dark",
+    })
+  })
+
+  it("hides and shows the status bar in sync with reader chrome", async () => {
+    render(<ReaderScreen />)
+
+    expect(mockSetOptions).toHaveBeenLastCalledWith({
+      statusBarAnimation: "none",
+      statusBarHidden: true,
+      statusBarStyle: "dark",
+    })
+
+    await act(() => {
+      mockSurface.reflow.onToggleChrome?.()
+    })
+
+    expect(mockSetOptions).toHaveBeenLastCalledWith({
+      statusBarAnimation: "none",
+      statusBarHidden: false,
+      statusBarStyle: "dark",
+    })
+
+    await act(() => {
+      mockSurface.reflow.onToggleChrome?.()
+    })
+
+    expect(mockSetOptions).toHaveBeenLastCalledWith({
+      statusBarAnimation: "none",
+      statusBarHidden: true,
+      statusBarStyle: "dark",
+    })
+  })
+
+  it("maps dark reader themes to light status bar style", () => {
+    mockStore = {
+      ...mockStore,
+      settings: {
+        ...defaultSettings,
+        reflowable: {
+          ...defaultSettings.reflowable,
+          theme: "night",
+        },
+      },
+    }
+
+    render(<ReaderScreen />)
+
+    expect(mockSetOptions).toHaveBeenLastCalledWith({
+      statusBarAnimation: "none",
+      statusBarHidden: true,
+      statusBarStyle: "light",
+    })
   })
 })

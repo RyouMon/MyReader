@@ -3,6 +3,7 @@ import i18n from "@/src/i18n"
 import {
   Alert,
   Appearance,
+  Platform,
   type AlertButton,
   type AlertOptions,
 } from "react-native"
@@ -32,8 +33,14 @@ function getPreferredStatusBarStyle(): StatusBarStyle {
 
 /**
  * Re-applies app status bar style after native alert overlay is dismissed.
+ * On iOS with UIViewControllerBasedStatusBarAppearance enabled, UIKit restores
+ * the active view controller's status bar appearance and RCTStatusBarManager
+ * (used by expo-status-bar) would raise a RedBox error.
  */
 function restoreStatusBarStyle() {
+  if (Platform.OS === "ios") {
+    return
+  }
   const style = getPreferredStatusBarStyle()
   for (const delay of STATUS_BAR_RESTORE_DELAY_MS) {
     setTimeout(() => {
