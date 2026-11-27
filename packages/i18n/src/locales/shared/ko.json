@@ -146,6 +146,10 @@
     "title": "Qwen",
     "add": "{{name}} 추가"
   },
+  "ttsProviders": {
+    "volcengine": "Volcengine (Doubao)",
+    "volcengineCredentialHint": "API 키 또는 AppID:AccessKey"
+  },
   "addLibraryFlow": {
     "title": "서재 추가",
     "noLibrary": {

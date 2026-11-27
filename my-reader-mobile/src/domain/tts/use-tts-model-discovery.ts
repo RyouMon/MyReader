@@ -2,7 +2,9 @@ import { useMutation } from "@tanstack/react-query"
 import {
   discoverQwenTtsVoices,
   discoverTtsModels,
+  discoverTtsVoices,
   getQwenTtsModels,
+  type MobileTtsModel,
   type QwenTtsModel,
 } from "@/src/services/core/tts"
 import {
@@ -57,7 +59,7 @@ export function useTtsModelDiscovery() {
       Promise.all(
         ids.map(async (id) => {
           const known = catalog.find((model) => model.id === id)
-          const model = newTtsModel(id, known)
+          const model = newTtsModel(id, known, draft.kind)
           if (draft.kind !== "qwen" || known?.voiceDiscovery === false)
             return model
           return mergeVoices(
@@ -79,5 +81,33 @@ export function useTtsModelDiscovery() {
         }),
       ),
   })
-  return { discover, voices }
+  const fetchVoices = useMutation({
+    mutationFn: async ({
+      draft,
+      model,
+      signal,
+    }: {
+      draft: TtsProviderDraft
+      model?: MobileTtsModel
+      signal: AbortSignal
+    }) => {
+      if (draft.kind === "qwen" && model?.model.trim()) {
+        return discoverQwenTtsVoices(
+          {
+            endpoint: draft.endpoint,
+            model: model.model.trim(),
+            profileId: draft.clearCredential
+              ? undefined
+              : draft.id || undefined,
+            credential: draft.clearCredential
+              ? undefined
+              : draft.credential.trim() || undefined,
+          },
+          signal,
+        )
+      }
+      return discoverTtsVoices(previewInput(draft, model), signal)
+    },
+  })
+  return { discover, voices, fetchVoices }
 }

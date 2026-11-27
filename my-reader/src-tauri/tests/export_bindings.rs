@@ -117,6 +117,7 @@ fn export_tauri_specta_typescript_bindings() {
             my_reader_lib::commands::tts::probe_tts_provider::<tauri::Wry>,
             my_reader_lib::commands::tts::test_tts_provider::<tauri::Wry>,
             my_reader_lib::commands::tts::discover_tts_models::<tauri::Wry>,
+            my_reader_lib::commands::tts::discover_tts_voices::<tauri::Wry>,
             my_reader_lib::commands::tts::list_tts_voices::<tauri::Wry>,
             my_reader_lib::commands::tts::synthesize_tts::<tauri::Wry>,
             my_reader_lib::commands::tts::synthesize_tts_request::<tauri::Wry>,

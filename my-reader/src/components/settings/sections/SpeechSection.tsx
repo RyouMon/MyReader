@@ -1,5 +1,9 @@
-import { ttsVoiceLabel } from "@my-reader/tools/tts-voice-names"
+import {
+  TTS_PROVIDER_KINDS,
+  ttsProviderMeta,
+} from "@my-reader/tools/tts-providers"
 import { ttsUsageMessage } from "@my-reader/tools/tts-selection-usage"
+import { ttsVoiceLabel } from "@my-reader/tools/tts-voice-names"
 import { Loader2, Server, Volume2 } from "lucide-react"
 import { type CSSProperties, useCallback, useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
@@ -45,10 +49,11 @@ import type {
   TtsConfigDto,
   TtsPlaybackPreferencesDto,
   TtsProviderDto,
+  TtsProviderKindDto,
 } from "@/lib/tauri-specta"
 import { notifyTtsConfigChanged } from "@/lib/tts/events"
 import {
-  newTtsModel,
+  newTtsProviderDraft,
   type TtsProviderDraft,
   modelVoices as usesModelVoices,
 } from "@/lib/tts-provider-draft"
@@ -64,20 +69,13 @@ function systemVoiceId(voice: SpeechSynthesisVoice): string {
   return voice.voiceURI || voice.name
 }
 
-function newProfileDraft(): ProfileDraft {
-  return {
-    id: "",
-    name: "OpenAI",
-    kind: "openAiCompatible",
-    endpoint: "https://api.openai.com/v1",
-    modelScopedVoices: false,
-    models: [newTtsModel("gpt-4o-mini-tts")],
-    voices: [""],
-
-    credential: "",
-    hasCredential: false,
-    clearCredential: false,
-  }
+function providerKindLabel(
+  kind: TtsProviderKindDto,
+  t: (key: string) => string,
+): string {
+  if (kind === "openAiCompatible") return t("settings.speech.openAiCompatible")
+  if (kind === "volcengine") return t("ttsProviders.volcengine")
+  return ttsProviderMeta(kind).defaultName
 }
 
 function profileDraft(provider: TtsProviderDto): ProfileDraft {
@@ -495,7 +493,7 @@ export function TtsProviderManager({
                     </div>
                   }
                   body={profile.name}
-                  detail={`${profile.kind === "qwen" ? "Qwen" : t("settings.speech.openAiCompatible")} · ${profile.endpoint}`}
+                  detail={`${providerKindLabel(profile.kind, t)} · ${profile.endpoint}`}
                   actions={
                     <RowActions
                       name={profile.name}
@@ -530,18 +528,16 @@ export function TtsProviderManager({
           loading={storedCredential.loading}
           saving={saving}
           onOpenChange={handleProviderDialogOpenChange}
-          onChooseOpenAi={() => setDraft(newProfileDraft())}
-          onChooseQwen={() => {
-            setDraft({
-              ...newProfileDraft(),
-              kind: "qwen",
-              name: "Qwen",
-              endpoint: "",
-              modelScopedVoices: true,
-              models: [newTtsModel()],
-              voices: [],
-            })
-          }}
+          onChooseKind={(kind) =>
+            setDraft(
+              newTtsProviderDraft(
+                kind,
+                kind === "volcengine"
+                  ? t("ttsProviders.volcengine")
+                  : undefined,
+              ),
+            )
+          }
           onBack={() => {
             setDraft(null)
             setProviderError(null)
@@ -562,8 +558,7 @@ function ProviderDialog({
   error,
   saving,
   onOpenChange,
-  onChooseOpenAi,
-  onChooseQwen,
+  onChooseKind,
   loading,
   onBack,
   onChange,
@@ -575,8 +570,7 @@ function ProviderDialog({
   error: string | null
   saving: boolean
   onOpenChange: (open: boolean) => void
-  onChooseOpenAi: () => void
-  onChooseQwen: () => void
+  onChooseKind: (kind: TtsProviderKindDto) => void
   loading: boolean
   onBack: () => void
   onChange: (draft: ProfileDraft) => void
@@ -607,16 +601,18 @@ function ProviderDialog({
         <div className="min-h-0">
           {choosingType ? (
             <div className="grid h-full content-start gap-3 overflow-y-auto px-6 py-5">
-              <FlowDialogChoice
-                icon={Server}
-                title={t("settings.speech.addOpenAi")}
-                onClick={onChooseOpenAi}
-              />
-              <FlowDialogChoice
-                icon={Volume2}
-                title="Qwen"
-                onClick={onChooseQwen}
-              />
+              {TTS_PROVIDER_KINDS.map((kind) => (
+                <FlowDialogChoice
+                  key={kind}
+                  icon={kind === "openAiCompatible" ? Server : Volume2}
+                  title={
+                    kind === "openAiCompatible"
+                      ? t("settings.speech.addOpenAi")
+                      : providerKindLabel(kind, t)
+                  }
+                  onClick={() => onChooseKind(kind)}
+                />
+              ))}
               {error ? <StatusNotice tone="error">{error}</StatusNotice> : null}
             </div>
           ) : loading ? (
@@ -706,9 +702,7 @@ function ProfileEditor({
                 error={Boolean(fieldErrors["tts-profile-endpoint"])}
                 helperText={fieldErrors["tts-profile-endpoint"]}
                 placeholder={
-                  draft.kind === "qwen"
-                    ? undefined
-                    : "https://api.openai.com/v1"
+                  ttsProviderMeta(draft.kind).defaultEndpoint || undefined
                 }
                 onChange={(event) => update({ endpoint: event.target.value })}
               />
@@ -717,6 +711,13 @@ function ProfileEditor({
             <FormPasswordField
               id="tts-profile-credential"
               label={t("settings.speech.credential")}
+              placeholder={
+                draft.kind === "volcengine"
+                  ? t("ttsProviders.volcengineCredentialHint")
+                  : draft.kind === "openAiCompatible"
+                    ? t("settings.speech.credentialOptional")
+                    : undefined
+              }
               fullWidth
               autoComplete="new-password"
               value={draft.credential}
@@ -871,8 +872,8 @@ function useProviderDialogCopy(draft: ProfileDraft | null) {
     ? t("settings.speech.addProvider")
     : draft.id
       ? t("settings.speech.editProvider")
-      : draft.kind === "qwen"
-        ? t("qwenTts.add", { name: "Qwen" })
-        : t("settings.speech.addOpenAi")
+      : draft.kind === "openAiCompatible"
+        ? t("settings.speech.addOpenAi")
+        : t("qwenTts.add", { name: providerKindLabel(draft.kind, t) })
   return { title, description: undefined }
 }

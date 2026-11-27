@@ -248,6 +248,7 @@ export const api = {
   probeTtsProvider: wrap(commands.probeTtsProvider),
   testTtsProvider: wrap(commands.testTtsProvider),
   discoverTtsModels: wrap(commands.discoverTtsModels),
+  discoverTtsVoices: wrap(commands.discoverTtsVoices),
   listTtsVoices: wrap(commands.listTtsVoices),
   synthesizeTts: wrap(commands.synthesizeTts),
   synthesizeTtsRequest: (

@@ -1,8 +1,9 @@
+import { ttsProviderMeta } from "@my-reader/tools/tts-providers"
 import { useTranslation } from "react-i18next"
 import { TtsVoicesEditor } from "@/components/settings/TtsVoicesEditor"
 import { Button } from "@/components/ui/button"
-import type { TtsProviderDraft } from "@/lib/tts-provider-draft"
 import type { TtsModelDto } from "@/lib/tauri-specta"
+import type { TtsProviderDraft } from "@/lib/tts-provider-draft"
 
 export function TtsModelDetails({
   draft,
@@ -18,6 +19,10 @@ export function TtsModelDetails({
   onRefresh: () => void
 }) {
   const { t } = useTranslation()
+  const canFetchVoices =
+    ttsProviderMeta(draft.kind).supportsVoiceDiscovery &&
+    Boolean(draft.endpoint.trim()) &&
+    (draft.kind !== "qwen" || Boolean(model.model.trim()))
   return (
     <TtsVoicesEditor
       draft={draft}
@@ -25,7 +30,7 @@ export function TtsModelDetails({
       fieldErrors={fieldErrors}
       onChange={onVoicesChange}
       actions={
-        draft.kind === "qwen" && model.model.trim() ? (
+        canFetchVoices ? (
           <Button type="button" variant="ghost" size="sm" onClick={onRefresh}>
             {t("providerEditor.fetchVoices")}
           </Button>

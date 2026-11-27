@@ -61,6 +61,7 @@ jest.mock("@/src/services/core/tts", () => ({
   ...jest.requireActual("@/test/fixtures/qwen-tts"),
   getQwenTtsModels: jest.fn(),
   discoverTtsModels: jest.fn(),
+  discoverTtsVoices: jest.fn(),
   discoverQwenTtsVoices: jest.fn(),
   getTtsConfig: jest.fn(),
   getTtsCredential: jest.fn().mockResolvedValue("saved-test-key"),
@@ -180,6 +181,7 @@ beforeEach(() => {
   jest
     .mocked(tts.discoverQwenTtsVoices)
     .mockResolvedValue([{ id: "account", language: "zh" }])
+  jest.mocked(tts.discoverTtsVoices).mockResolvedValue([])
   jest.mocked(tts.getQwenTtsModels).mockResolvedValue([
     {
       id: "qwen-new",
@@ -493,4 +495,47 @@ it("requires confirmation and successful persistence before leaving a deleted pr
   await waitFor(() =>
     expect(mockRouter.dismissTo).toHaveBeenCalledWith("/tts-providers"),
   )
+})
+
+it("discovers shared voices with display names for native providers and saves them", async () => {
+  jest.mocked(tts.discoverTtsVoices).mockResolvedValueOnce([
+    {
+      id: "male-qn-qingse",
+      name: "青涩青年",
+      language: "zh-CN",
+    },
+  ])
+  mount({ kind: "miniMax" })
+  expect(screen.getByTestId("tts-provider-endpoint").props.value).toBe(
+    "https://api.minimaxi.com",
+  )
+  expect(screen.queryByLabelText("aiProviders.modelScopedVoices")).toBeNull()
+  fireEvent.changeText(screen.getByTestId("tts-provider-credential"), "mm-key")
+  fireEvent.press(screen.getByText("providerEditor.fetchVoices"))
+  await screen.findByDisplayValue("male-qn-qingse")
+  expect(screen.getByDisplayValue("青涩青年")).toBeTruthy()
+  save()
+  await waitFor(() =>
+    expect(tts.saveTtsProvider).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: expect.objectContaining({
+          kind: "miniMax",
+          voices: ["male-qn-qingse"],
+          voiceNames: { "male-qn-qingse": "青涩青年" },
+        }),
+        credential: "mm-key",
+      }),
+    ),
+  )
+})
+
+it("configures Volcengine with model-scoped voices and credential format hint", () => {
+  mount({ kind: "volcengine" })
+  expect(screen.getByTestId("tts-provider-endpoint").props.value).toBe(
+    "https://openspeech.bytedance.com/api/v3/tts/unidirectional",
+  )
+  expect(screen.getByTestId("tts-provider-credential").props.placeholder).toBe(
+    "ttsProviders.volcengineCredentialHint",
+  )
+  expect(screen.queryByLabelText("aiProviders.modelScopedVoices")).toBeNull()
 })

@@ -146,6 +146,10 @@
     "title": "Qwen",
     "add": "Agregar {{name}}"
   },
+  "ttsProviders": {
+    "volcengine": "Volcengine (Doubao)",
+    "volcengineCredentialHint": "Clave de API o AppID:AccessKey"
+  },
   "addLibraryFlow": {
     "title": "Añadir biblioteca",
     "noLibrary": {

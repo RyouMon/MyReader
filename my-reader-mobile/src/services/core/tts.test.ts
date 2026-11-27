@@ -2,6 +2,7 @@ import {
   ttsGetConfig,
   ttsSaveProvider,
   ttsDiscoverQwenVoices,
+  ttsDiscoverVoices,
   ttsQwenModels,
   ttsRemoveProfile,
   ttsSynthesize,
@@ -17,6 +18,7 @@ import {
 import {
   getTtsConfig,
   discoverQwenTtsVoices,
+  discoverTtsVoices,
   getQwenTtsModels,
   removeTtsProfile,
   synthesizeTts,
@@ -57,6 +59,7 @@ jest.mock("my-reader-core", () => ({
   librarySwitch: jest.fn(),
   ttsGetConfig: jest.fn(),
   ttsDiscoverQwenVoices: jest.fn(),
+  ttsDiscoverVoices: jest.fn(),
   ttsQwenModels: jest.fn(),
   ttsListVoices: jest.fn(),
   ttsProbeProvider: jest.fn(),
@@ -517,6 +520,47 @@ describe("mobile core TTS", () => {
     await Promise.resolve()
     await Promise.resolve()
     expect(ttsSynthesize).not.toHaveBeenCalled()
+  })
+
+  it("discovers provider voices via Core using draft or stored credentials", async () => {
+    const controller = new AbortController()
+    jest.mocked(ttsDiscoverVoices).mockResolvedValue([
+      {
+        id: "male-qn-qingse",
+        name: "青涩青年音色",
+        language: "mul",
+      },
+    ])
+    await expect(
+      discoverTtsVoices(
+        {
+          profile: {
+            name: "MiniMax",
+            kind: "miniMax",
+            endpoint: "https://api.minimaxi.com",
+            model: "speech-2.8-turbo",
+            responseFormat: "mp3",
+            voices: [],
+          },
+          credential: " minimax-key ",
+        },
+        controller.signal,
+      ),
+    ).resolves.toEqual([
+      {
+        id: "male-qn-qingse",
+        name: "青涩青年音色",
+        language: "mul",
+      },
+    ])
+    expect(ttsDiscoverVoices).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "miniMax",
+        endpoint: "https://api.minimaxi.com",
+      }),
+      "minimax-key",
+      { signal: controller.signal },
+    )
   })
 
   it("removes the SecureStore entry after Core removes a profile", async () => {

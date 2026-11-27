@@ -217,6 +217,10 @@ export const sharedEn = {
     title: "Qwen",
     add: "Add {{name}}",
   },
+  ttsProviders: {
+    volcengine: "Volcengine (Doubao)",
+    volcengineCredentialHint: "API key or AppID:AccessKey",
+  },
   addLibraryFlow: {
     title: "Add library",
     noLibrary: {

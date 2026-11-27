@@ -158,6 +158,8 @@ impl TestApp {
                 my_reader_lib::commands::tts::set_tts_voice_for_language::<MockRuntime>,
                 my_reader_lib::commands::tts::get_tts_provider_capabilities::<MockRuntime>,
                 my_reader_lib::commands::tts::probe_tts_provider::<MockRuntime>,
+                my_reader_lib::commands::tts::discover_tts_models::<MockRuntime>,
+                my_reader_lib::commands::tts::discover_tts_voices::<MockRuntime>,
                 my_reader_lib::commands::tts::list_tts_voices::<MockRuntime>,
                 my_reader_lib::commands::tts::synthesize_tts::<MockRuntime>,
                 my_reader_lib::commands::tts::synthesize_tts_request::<MockRuntime>,

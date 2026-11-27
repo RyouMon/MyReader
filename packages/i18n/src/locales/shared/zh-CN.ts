@@ -208,6 +208,10 @@ export const sharedZhCN = {
     title: "Qwen（通义千问）",
     add: "添加 {{name}}",
   },
+  ttsProviders: {
+    volcengine: "火山引擎（豆包语音）",
+    volcengineCredentialHint: "API Key 或 AppID:AccessKey",
+  },
   addLibraryFlow: {
     title: "添加书库",
     noLibrary: {

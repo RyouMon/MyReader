@@ -209,7 +209,8 @@ fn add_tts_profile(config: &Path, id: &str) {
             model: Some("speech".into()),
             credential_reference: None,
             revision: 0,
-            options: TtsProviderOptions::OpenAiCompatible {
+            options: TtsProviderOptions {
+                kind: TtsProviderKind::OpenAiCompatible,
                 response_format: TtsAudioFormat::Mp3,
                 instructions: None,
                 voices: vec!["A".into()],

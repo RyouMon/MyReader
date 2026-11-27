@@ -146,6 +146,10 @@
     "title": "Qwen（通義千問）",
     "add": "新增 {{name}}"
   },
+  "ttsProviders": {
+    "volcengine": "火山引擎（豆包語音）",
+    "volcengineCredentialHint": "API Key 或 AppID:AccessKey"
+  },
   "addLibraryFlow": {
     "title": "新增書庫",
     "noLibrary": {

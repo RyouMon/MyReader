@@ -6,7 +6,7 @@ import {
   ttsDraftInput,
   type TtsProviderDraft,
 } from "@/lib/tts-provider-draft"
-import type { QwenTtsModelDto } from "@/lib/tauri-specta"
+import type { QwenTtsModelDto, TtsModelDto } from "@/lib/tauri-specta"
 
 export function useTtsModelDiscovery() {
   const discover = useMutation({
@@ -20,13 +20,11 @@ export function useTtsModelDiscovery() {
         const models = await api.listQwenTtsModels(ttsDraftInput(draft))
         return models.map((model) => ({
           id: model.id,
-
           qwen: model,
         }))
       }
       return (await api.discoverTtsModels(ttsDraftInput(draft))).map((id) => ({
         id,
-
         qwen: undefined,
       }))
     },
@@ -47,7 +45,7 @@ export function useTtsModelDiscovery() {
             draft.kind === "qwen"
               ? catalog.find((model) => model.id === id)
               : undefined
-          const model = newTtsModel(id, known)
+          const model = newTtsModel(id, known, draft.kind)
           if (draft.kind === "qwen" && known?.voiceDiscovery !== false) {
             const discovered = await api.discoverQwenTtsVoices({
               endpoint: draft.endpoint,
@@ -64,5 +62,26 @@ export function useTtsModelDiscovery() {
       )
     },
   })
-  return { discover, voices }
+  const fetchVoices = useMutation({
+    mutationFn: async ({
+      draft,
+      model,
+    }: {
+      draft: TtsProviderDraft
+      model?: TtsModelDto
+    }) => {
+      if (draft.kind === "qwen" && model?.model.trim()) {
+        return api.discoverQwenTtsVoices({
+          endpoint: draft.endpoint,
+          model: model.model.trim(),
+          profileId: draft.clearCredential ? null : draft.id || null,
+          credential: draft.clearCredential
+            ? null
+            : draft.credential.trim() || null,
+        })
+      }
+      return api.discoverTtsVoices(ttsDraftInput(draft, model))
+    },
+  })
+  return { discover, voices, fetchVoices }
 }

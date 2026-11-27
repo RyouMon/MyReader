@@ -31,6 +31,7 @@ const mocks = vi.hoisted(() => ({
   getTtsChangeUsage: vi.fn().mockResolvedValue([]),
   setTtsPlaybackPreferences: vi.fn(),
   discoverTtsModels: vi.fn(),
+  discoverTtsVoices: vi.fn(),
   listQwenTtsModels: vi.fn(),
   getTtsCredential: vi.fn().mockResolvedValue("fixture-key"),
   discoverQwenTtsVoices: vi.fn(),
@@ -47,6 +48,7 @@ vi.mock("@/lib/tauri-api", () => ({
     getTtsChangeUsage: mocks.getTtsChangeUsage,
     setTtsPlaybackPreferences: mocks.setTtsPlaybackPreferences,
     discoverTtsModels: mocks.discoverTtsModels,
+    discoverTtsVoices: mocks.discoverTtsVoices,
     listQwenTtsModels: mocks.listQwenTtsModels,
     getTtsCredential: mocks.getTtsCredential,
     discoverQwenTtsVoices: mocks.discoverQwenTtsVoices,
@@ -120,6 +122,7 @@ beforeEach(() => {
   mocks.testTtsProvider.mockResolvedValue({ path: "/tmp/preview.mp3" })
   mocks.cancelTtsSynthesis.mockResolvedValue(undefined)
   mocks.discoverTtsModels.mockResolvedValue([])
+  mocks.discoverTtsVoices.mockResolvedValue([])
   vi.stubGlobal("ResizeObserver", ResizeObserverMock)
   HTMLElement.prototype.scrollIntoView = vi.fn()
   mocks.getTtsConfig.mockResolvedValue(config)
@@ -981,4 +984,83 @@ it("confirms provider deletion before removing it and notifying readers", async 
     expect(screen.queryByText("待删除的语音服务")).not.toBeInTheDocument(),
   )
   expect(mocks.notifyTtsConfigChanged).toHaveBeenCalledOnce()
+})
+
+it("lists all native TTS providers, discovers shared voices with display names, and saves MiniMax", async () => {
+  mocks.discoverTtsVoices.mockResolvedValue([
+    {
+      id: "male-qn-qingse",
+      name: "青涩青年",
+      language: "zh-CN",
+      gender: null,
+    },
+  ])
+  const user = userEvent.setup()
+  render(<TtsProvidersSection />)
+  await user.click(await screen.findByRole("button", { name: "添加语音服务" }))
+  const picker = within(screen.getByRole("dialog"))
+  for (const label of [
+    "添加 OpenAI 兼容服务",
+    "Qwen",
+    "MiniMax",
+    "火山引擎（豆包语音）",
+    "ElevenLabs",
+    "Fish Audio",
+    "Google Gemini",
+  ]) {
+    expect(picker.getByRole("button", { name: label })).toBeInTheDocument()
+  }
+
+  await user.click(picker.getByRole("button", { name: "MiniMax" }))
+  const form = within(screen.getByRole("dialog"))
+  expect(form.getByLabelText(/服务器地址\s*\*?$/)).toHaveValue(
+    "https://api.minimaxi.com",
+  )
+  expect(form.getByLabelText(/模型 ID\s*\*?$/)).toHaveValue("speech-2.8-turbo")
+  expect(
+    form.queryByRole("switch", { name: "音色按模型配置" }),
+  ).not.toBeInTheDocument()
+  await user.type(form.getByLabelText("API 密钥或访问令牌"), "mm-key")
+  await user.click(form.getByRole("button", { name: "获取声音" }))
+  await waitFor(() =>
+    expect(form.getByLabelText(/声音 ID\s*\*?$/)).toHaveValue("male-qn-qingse"),
+  )
+  expect(form.getByLabelText("显示名称")).toHaveValue("青涩青年")
+
+  await user.click(form.getByRole("button", { name: "保存" }))
+  await waitFor(() =>
+    expect(mocks.saveTtsProvider).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: expect.objectContaining({
+          kind: "miniMax",
+          endpoint: "https://api.minimaxi.com",
+          voices: ["male-qn-qingse"],
+          voiceNames: { "male-qn-qingse": "青涩青年" },
+        }),
+        credential: "mm-key",
+      }),
+    ),
+  )
+})
+
+it("configures Volcengine with model-scoped voices and dual-auth credential hint", async () => {
+  const user = userEvent.setup()
+  render(<TtsProvidersSection />)
+  await user.click(await screen.findByRole("button", { name: "添加语音服务" }))
+  await user.click(screen.getByRole("button", { name: "火山引擎（豆包语音）" }))
+  const form = within(screen.getByRole("dialog"))
+  expect(form.getByLabelText(/^名称\s*\*?$/)).toHaveValue(
+    "火山引擎（豆包语音）",
+  )
+  expect(form.getByLabelText(/服务器地址\s*\*?$/)).toHaveValue(
+    "https://openspeech.bytedance.com/api/v3/tts/unidirectional",
+  )
+  expect(form.getByLabelText(/模型 ID\s*\*?$/)).toHaveValue("seed-tts-2.0")
+  expect(form.getByLabelText("API 密钥或访问令牌")).toHaveAttribute(
+    "placeholder",
+    "API Key 或 AppID:AccessKey",
+  )
+  expect(
+    form.queryByRole("switch", { name: "音色按模型配置" }),
+  ).not.toBeInTheDocument()
 })

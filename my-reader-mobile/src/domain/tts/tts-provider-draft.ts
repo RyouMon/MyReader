@@ -1,3 +1,8 @@
+import {
+  mergeDiscoveredTtsVoices,
+  ttsProviderMeta,
+  ttsUsesModelScopedVoices,
+} from "@my-reader/tools/tts-providers"
 import { randomUUID } from "expo-crypto"
 import type {
   MobileTtsModel,
@@ -11,32 +16,47 @@ export type TtsProviderDraft = MobileTtsProvider & {
   credential: string
   clearCredential: boolean
 }
+
 export const usesModelVoices = (draft: MobileTtsProvider) =>
-  draft.kind === "qwen" || draft.modelScopedVoices
+  ttsUsesModelScopedVoices(draft)
 
 export function newTtsModel(
   model = "",
   catalog?: QwenTtsModel,
+  kind = "openAiCompatible",
 ): MobileTtsModel {
+  const meta = ttsProviderMeta(kind)
   return {
     id: randomUUID(),
     model,
-    responseFormat: catalog?.audioFormats[0] ?? "mp3",
+    responseFormat: catalog?.audioFormats[0] ?? meta.defaultFormat,
     voices: catalog?.voices.length
       ? catalog.voices.map((voice) => voice.id)
       : [""],
+    voiceNames: {},
   }
 }
 
-export function newTtsDraft(): TtsProviderDraft {
+export function newTtsDraft(
+  kind = "openAiCompatible",
+  displayName?: string,
+): TtsProviderDraft {
+  const meta = ttsProviderMeta(kind)
+  const scoped = meta.forcesModelScopedVoices
   return {
     id: "",
-    kind: "openAiCompatible",
-    name: "OpenAI",
-    endpoint: "https://api.openai.com/v1",
-    modelScopedVoices: false,
-    models: [{ ...newTtsModel("gpt-4o-mini-tts"), voices: [] }],
-    voices: [""],
+    kind: meta.kind,
+    name: displayName ?? meta.defaultName,
+    endpoint: meta.defaultEndpoint,
+    modelScopedVoices: scoped,
+    models: [
+      {
+        ...newTtsModel(meta.defaultModel, undefined, meta.kind),
+        voices: scoped ? [""] : [],
+      },
+    ],
+    voices: scoped ? [] : [""],
+    voiceNames: {},
     hasCredential: false,
     credential: "",
     clearCredential: false,
@@ -47,6 +67,7 @@ export function previewInput(
   draft: TtsProviderDraft,
   model = draft.models[0],
 ): UpsertMobileTtsProfileInput {
+  const meta = ttsProviderMeta(draft.kind)
   return {
     profile: {
       id: draft.id || undefined,
@@ -54,7 +75,7 @@ export function previewInput(
       endpoint: draft.endpoint,
       kind: draft.kind,
       model: model?.model,
-      responseFormat: model?.responseFormat ?? "mp3",
+      responseFormat: model?.responseFormat ?? meta.defaultFormat,
       instructions: model?.instructions,
       voices: (usesModelVoices(draft)
         ? (model?.voices ?? [])
@@ -67,15 +88,31 @@ export function previewInput(
 }
 
 export function mergeVoices(model: MobileTtsModel, incoming: TtsVoice[]) {
-  const voices = [
-    ...new Set([
-      ...model.voices.filter((id) => id.trim()),
-      ...incoming.map((voice) => voice.id),
-    ]),
-  ]
+  const merged = mergeDiscoveredTtsVoices(
+    model.voices,
+    model.voiceNames,
+    incoming,
+  )
   return {
     ...model,
-    voices: voices.length ? voices : [""],
+    voices: merged.voices,
+    voiceNames: merged.voiceNames,
+  }
+}
+
+export function mergeSharedVoices(
+  draft: TtsProviderDraft,
+  incoming: TtsVoice[],
+): TtsProviderDraft {
+  const merged = mergeDiscoveredTtsVoices(
+    draft.voices,
+    draft.voiceNames,
+    incoming,
+  )
+  return {
+    ...draft,
+    voices: merged.voices,
+    voiceNames: merged.voiceNames,
   }
 }
 
@@ -97,7 +134,6 @@ export function setVoiceScope(
     modelScopedVoices: scoped,
     voices: scoped ? [] : voices,
     voiceNames: scoped ? {} : voiceNames,
-
     models: draft.models.map((model) => ({
       ...model,
       voices: scoped ? [...voices] : [],

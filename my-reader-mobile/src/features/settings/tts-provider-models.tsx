@@ -1,24 +1,26 @@
-import { useTtsRemoval } from "@/src/domain/tts/use-tts-removal-confirmation"
+import { ttsProviderMeta } from "@my-reader/tools/tts-providers"
 import { useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
-import { Button, FormSwitch, FormSelect } from "@/src/components"
+import { Button, FormSelect, FormSwitch } from "@/src/components"
+import type { useFormValidation } from "@/src/components/ui/use-form-validation"
 import { useThemePalette } from "@/src/design/tokens"
 import {
+  mergeSharedVoices,
   mergeVoices,
   newTtsModel,
   setVoiceScope,
+  type TtsProviderDraft,
   updateVoices,
   usesModelVoices,
-  type TtsProviderDraft,
 } from "@/src/domain/tts/tts-provider-draft"
 import { useTtsModelDiscovery } from "@/src/domain/tts/use-tts-model-discovery"
+import { useTtsRemoval } from "@/src/domain/tts/use-tts-removal-confirmation"
 import { errorMessage } from "@/src/i18n/error-message"
 import type { MobileTtsModel } from "@/src/services/core/tts"
 import { Text, View } from "@/tw"
-import { ProviderModels } from "./provider-models"
 import { ModelDiscovery } from "./model-discovery"
+import { ProviderModels } from "./provider-models"
 import { TtsVoicesEditor } from "./tts-voices-editor"
-import type { useFormValidation } from "@/src/components/ui/use-form-validation"
 
 export function TtsProviderModels({
   draft,
@@ -44,7 +46,8 @@ export function TtsProviderModels({
     if (invalidDetails >= 0) setSelected(invalidDetails)
   }, [invalidDetails])
   const [showModels, setShowModels] = useState(false)
-  const { discover, voices: importing } = useTtsModelDiscovery()
+  const { discover, voices: importing, fetchVoices } = useTtsModelDiscovery()
+  const meta = ttsProviderMeta(draft.kind)
   const request = useRef<AbortController | null>(null)
   const identity = JSON.stringify([
     draft.id,
@@ -59,7 +62,8 @@ export function TtsProviderModels({
     setShowModels(false)
     return () => request.current?.abort()
   }, [identity])
-  const busy = discover.isPending || importing.isPending
+  const busy =
+    discover.isPending || importing.isPending || fetchVoices.isPending
   const scoped = usesModelVoices(draft)
   const options = discover.data ?? []
   const catalog = options.flatMap((option) =>
@@ -98,26 +102,20 @@ export function TtsProviderModels({
       },
     )
   }
-  const refresh = (index: number) => {
+  const refreshScoped = (index: number) => {
     const controller = startRequest()
     const original = draft.models[index]!
-    importing.mutate(
-      { draft, ids: [original.model], catalog: [], signal: controller.signal },
+    fetchVoices.mutate(
+      { draft, model: original, signal: controller.signal },
       {
-        onSuccess: ([result]) => {
-          if (controller.signal.aborted || !result) return
+        onSuccess: (discovered) => {
+          if (controller.signal.aborted) return
           const latest = current.current
           onChange({
             ...latest,
             models: latest.models.map((model) =>
               model.id === original.id && model.model === original.model
-                ? mergeVoices(
-                    model,
-                    result.voices.map((id) => ({
-                      id,
-                      language: "mul",
-                    })),
-                  )
+                ? mergeVoices(model, discovered)
                 : model,
             ),
           })
@@ -125,50 +123,71 @@ export function TtsProviderModels({
       },
     )
   }
-  const voiceEditor = (model?: MobileTtsModel, index?: number) => (
-    <TtsVoicesEditor
-      draft={draft}
-      model={model}
-      validation={validation}
-      onChange={(voices, names) =>
-        onChange(updateVoices(draft, model?.id, voices, names))
-      }
-      actions={
-        draft.kind === "qwen" && model?.model.trim() && index !== undefined ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            title={t("providerEditor.fetchVoices")}
-            icon={{ ios: "arrow.clockwise", android: "refresh" }}
-            disabled={busy}
-            onPress={() => refresh(index)}
-          />
-        ) : undefined
-      }
-    />
-  )
+  const refreshShared = (model?: MobileTtsModel) => {
+    const controller = startRequest()
+    fetchVoices.mutate(
+      { draft, model, signal: controller.signal },
+      {
+        onSuccess: (discovered) => {
+          if (controller.signal.aborted) return
+          onChange(mergeSharedVoices(current.current, discovered))
+        },
+      },
+    )
+  }
+  const voiceEditor = (model?: MobileTtsModel, index?: number) => {
+    const canFetch =
+      meta.supportsVoiceDiscovery &&
+      Boolean(draft.endpoint.trim()) &&
+      index !== undefined &&
+      (draft.kind !== "qwen" || Boolean(model?.model.trim()))
+    return (
+      <TtsVoicesEditor
+        draft={draft}
+        model={model}
+        validation={validation}
+        onChange={(voices, names) =>
+          onChange(updateVoices(draft, model?.id, voices, names))
+        }
+        actions={
+          canFetch ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              title={t("providerEditor.fetchVoices")}
+              icon={{ ios: "arrow.clockwise", android: "refresh" }}
+              loading={fetchVoices.isPending}
+              disabled={busy}
+              onPress={() => refreshScoped(index)}
+            />
+          ) : undefined
+        }
+      />
+    )
+  }
   const addManual = () => {
     const model = {
-      ...newTtsModel(),
+      ...newTtsModel("", undefined, draft.kind),
       voices: scoped ? [""] : [],
-      responseFormat: draft.kind === "qwen" ? "wav" : "mp3",
+      responseFormat: meta.defaultFormat,
     }
     onChange({ ...draft, models: [...draft.models, model] })
     setSelected(draft.models.length)
   }
+  const discoveryError = discover.error || importing.error || fetchVoices.error
   return (
     <View className="gap-3">
-      {discover.error || importing.error ? (
+      {discoveryError ? (
         <Text
           selectable
           accessibilityRole="alert"
           className="px-4 text-sm"
           style={{ color: palette.danger }}
         >
-          {errorMessage(discover.error || importing.error)}
+          {errorMessage(discoveryError)}
         </Text>
       ) : null}
-      {draft.kind === "openAiCompatible" ? (
+      {meta.allowsCustomVoiceScope ? (
         <FormSwitch
           label={t("aiProviders.modelScopedVoices")}
           value={scoped}
@@ -231,6 +250,12 @@ export function TtsProviderModels({
         <SharedVoices
           draft={draft}
           validation={validation}
+          busy={busy}
+          fetchingVoices={fetchVoices.isPending}
+          canFetchVoices={
+            meta.supportsVoiceDiscovery && Boolean(draft.endpoint.trim())
+          }
+          onFetchVoices={refreshShared}
           onChange={onChange}
         />
       ) : null}
@@ -241,10 +266,18 @@ export function TtsProviderModels({
 function SharedVoices({
   draft,
   validation,
+  busy,
+  fetchingVoices,
+  canFetchVoices,
+  onFetchVoices,
   onChange,
 }: {
   draft: TtsProviderDraft
   validation: ReturnType<typeof useFormValidation>
+  busy: boolean
+  fetchingVoices: boolean
+  canFetchVoices: boolean
+  onFetchVoices: (model?: MobileTtsModel) => void
   onChange: (draft: TtsProviderDraft) => void
 }) {
   const { t } = useTranslation()
@@ -261,6 +294,19 @@ function SharedVoices({
         draft={draft}
         model={model}
         validation={validation}
+        actions={
+          canFetchVoices ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              title={t("providerEditor.fetchVoices")}
+              icon={{ ios: "arrow.clockwise", android: "refresh" }}
+              loading={fetchingVoices}
+              disabled={busy}
+              onPress={() => onFetchVoices(model)}
+            />
+          ) : undefined
+        }
         onChange={(voices, names) =>
           onChange(updateVoices(draft, model?.id, voices, names))
         }

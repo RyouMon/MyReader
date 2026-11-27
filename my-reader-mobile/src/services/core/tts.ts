@@ -1,5 +1,6 @@
 import { Directory, Paths } from "expo-file-system"
 import { randomUUID } from "expo-crypto"
+import { isTtsProviderKind } from "@my-reader/tools/tts-providers"
 import { runTtsRequest } from "@my-reader/tools/tts-request"
 import {
   ttsGetConfig,
@@ -19,6 +20,7 @@ import {
   ttsSynthesize,
   ttsPreviewProvider,
   ttsDiscoverModels,
+  ttsDiscoverVoices,
   ttsUpsertProfile,
   type TtsAudioArtifact,
   type TtsConfig,
@@ -184,6 +186,17 @@ export async function discoverTtsModels(
   )
 }
 
+export async function discoverTtsVoices(
+  input: UpsertMobileTtsProfileInput,
+  signal?: AbortSignal,
+): Promise<TtsVoice[]> {
+  return ttsDiscoverVoices(
+    draftProfile(input),
+    await draftCredential(input),
+    signal ? { signal } : undefined,
+  )
+}
+
 export async function previewTtsProvider(
   input: UpsertMobileTtsProfileInput,
   text: string,
@@ -203,10 +216,7 @@ export async function previewTtsProvider(
 export async function upsertTtsProfile(
   input: UpsertMobileTtsProfileInput,
 ): Promise<MobileTtsConfig> {
-  if (
-    input.profile.kind !== "openAiCompatible" &&
-    input.profile.kind !== "qwen"
-  ) {
+  if (!isTtsProviderKind(input.profile.kind)) {
     throw new Error(`TTS_PROVIDER_KIND_UNSUPPORTED: ${input.profile.kind}`)
   }
   const current = await ttsGetConfig(appConfigPath)

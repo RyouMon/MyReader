@@ -21,14 +21,22 @@ isProject: true
 2026-11-21 修订：供应商设置维护模型和可用声音列表，朗读设置保存选用的模型和声音。
 读取旧配置时忽略模型上的 `defaultVoice`。
 
+2026-11-24 扩展：在 `my-reader-core` 接入 Phase C 五家原生云端 TTS 供应商（MiniMax、
+火山引擎（豆包语音）、ElevenLabs、Fish Audio、Google Gemini TTS），
+并为 OpenAI-compatible 入口补齐本地自托管无密钥合成与 best-effort 音色发现
+（`/v1/audio/voices`、`/v1/audio/speech/voices`）。统一提供跨端 `discover_voices`
+接口与可选显示名回填、基于能力的 `playback_rate` 语速补偿，以及 opt-in 实测验证套件。
+继续不内置非官方 Edge TTS，暂不接入 Azure Speech，OpenAI-compatible 维持单一收敛入口。
+
 当前已实施：
 
 - 桌面、iOS 和 Android 的文本 EPUB Readium 朗读会话、句子 Decoration、Locator 跟随与
   “回到朗读位置”。
 - 播放、暂停、停止、上一句、下一句，以及从当前位置或 Selection Locator 起播。
-- System 与 OpenAI-compatible 两种第一阶段引擎；网络引擎使用同一 Core profile、voice
-  discovery、合成、缓存、错误和凭据引用合同。
-- Qwen-Audio-TTS Plus、Qwen3-TTS Flash / Instruct、Qwen3-TTS VC / VD 的 HTTP 合成与已有音色选择。
+- System、OpenAI-compatible（含本地无密钥自托管服务）、Qwen 原生 DashScope，以及
+  MiniMax、火山引擎（豆包语音，合并 V3 单向流式与 V1 端点兼容）、ElevenLabs、Fish Audio、
+  Google Gemini TTS 原生 Core adapter，共享同一 profile、统一模型/音色发现、合成、缓存、
+  语速补偿、错误和凭据引用合同。
 - 网络引擎为当前句显示生成/缓冲状态，并按可播放时长自适应预取；停止、选文跳转及切换 provider/voice
   会取消旧请求并切换 generation，晚到结果不得改变当前播放位置。
 - 移动端预取窗口由 Readium 当前 utterance Locator 锚定的一次性内容投影生成；不维护按文本或语言
@@ -677,11 +685,12 @@ CosyVoice、AllTalk、XTTS、TTS-WebUI 等。MyReader 借鉴的是能力拆分�
 |---|---|---|
 | A | System | 零服务配置、正文不出设备；先验证 Readium 会话和平台媒体生命周期 |
 | B | OpenAI-compatible | 一个 typed adapter 覆盖 OpenAI `/v1/audio/speech` 与大量兼容网关；preset 只提供 endpoint/model 起点，可用声音 ID 由用户配置 |
-| C | MiniMax | 中文场景常见，能力和错误独立建 adapter |
-| C | Volcengine | 中文场景常见，按官方鉴权与 voice 模型实现 |
-| C | Azure Speech | Microsoft 的稳定官方云服务，支持 region/voice 管理 |
-| C | ElevenLabs | 高质量多语言 voice，成本与额度提示必须完整 |
-| C | Google Gemini TTS | 使用官方模型与鉴权；不接 Google Translate 非官方朗读接口 |
+| C | MiniMax | 中文场景常见，能力和错误独立建 adapter（已实施：`POST /v1/t2a_v2`、hex 解码、`POST /v1/get_voice`） |
+| C | Volcengine | 中文场景常见，合并豆包语音 V3 单向流式与 V1 端点兼容，按官方鉴权与 model-scoped 音色模型实现（已实施） |
+| C | Azure Speech | Microsoft 的稳定官方云服务，暂缓接入 |
+| C | ElevenLabs | 高质量多语言 voice，支持 `/v1/models` 与分页 `/v2/voices` 发现，v3/v4 由播放器做倍速补偿（已实施） |
+| C | Fish Audio | 热门开源/云端中文多语言 TTS，支持 `/v1/tts` 与有界 `/model` 音色发现（已实施） |
+| C | Google Gemini TTS | 使用官方 `generateContent` 音频模态与 24kHz PCM→WAV 封装及官方预置音色目录；不接 Google Translate 非官方朗读接口（已实施） |
 | D | GPT-SoVITS / CosyVoice | 本地/自托管中文模型；端点版本差异由独立 adapter 吸收 |
 | D | AllTalk / XTTS / TTS-WebUI | 常见本地聚合服务；先固定 profile/version probe |
 

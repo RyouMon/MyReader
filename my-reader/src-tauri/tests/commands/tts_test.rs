@@ -53,6 +53,32 @@ fn tts_test_server() -> TtsTestServer {
                             body,
                         });
 
+                        if path.ends_with("/v1/get_voice") {
+                            return warp::http::Response::builder()
+                                .header("content-type", "application/json")
+                                .body(Bytes::from(
+                                    serde_json::to_vec(&json!({
+                                        "base_resp": {"status_code": 0, "status_msg": "success"},
+                                        "system_voice": [
+                                            {"voice_id": "male-qn-qingse", "voice_name": "青涩青年"}
+                                        ]
+                                    }))
+                                    .unwrap(),
+                                ))
+                                .unwrap();
+                        }
+                        if path.ends_with("/v1/t2a_v2") {
+                            return warp::http::Response::builder()
+                                .header("content-type", "application/json")
+                                .body(Bytes::from(
+                                    serde_json::to_vec(&json!({
+                                        "base_resp": {"status_code": 0, "status_msg": "success"},
+                                        "data": {"audio": "494433040000", "status": 2}
+                                    }))
+                                    .unwrap(),
+                                ))
+                                .unwrap();
+                        }
                         if path.ends_with("/models") {
                             return warp::http::Response::builder().header("content-type", "application/json")
                                 .body(Bytes::from_static(br#"{"output":{"total":1,"models":[{"model":"qwen-audio-9.0-tts-plus"}]}}"#)).unwrap();
@@ -214,6 +240,101 @@ async fn provider_commands_should_round_trip_openai_audio() {
 
     let persisted = serde_json::to_string(&read_persisted_config(&app).unwrap()).unwrap();
     assert!(!persisted.contains("openai-test-secret"));
+
+    shutdown.send(()).unwrap();
+    server_thread.join().unwrap();
+}
+
+#[tokio::test]
+async fn native_minimax_commands_should_discover_voices_and_synthesize_hex_audio() {
+    let _guard = use_test_backend(MemoryBackend::default());
+    let app = TestApp::new();
+    let (server, requests, shutdown, server_thread) = tts_test_server();
+
+    let config: Value = invoke_ok(
+        &app,
+        "upsert_tts_profile",
+        json!({
+            "input": {
+                "profile": {
+                    "id": "minimax-e2e",
+                    "name": "MiniMax E2E",
+                    "kind": "miniMax",
+                    "endpoint": server,
+                    "model": "speech-2.8-turbo",
+                    "options": {
+                        "kind": "miniMax",
+                        "responseFormat": "mp3",
+                        "instructions": null,
+                        "voices": ["male-qn-qingse"]
+                    }
+                },
+                "credential": "minimax-secret-key",
+                "clearCredential": false
+            }
+        }),
+    );
+    assert_eq!(config["profiles"][0]["kind"], "miniMax");
+    assert_eq!(config["profiles"][0]["hasCredential"], true);
+
+    let voices: Value = invoke_ok(
+        &app,
+        "discover_tts_voices",
+        json!({
+            "input": {
+                "profile": {
+                    "id": "minimax-e2e",
+                    "name": "MiniMax E2E",
+                    "kind": "miniMax",
+                    "endpoint": server,
+                    "model": "speech-2.8-turbo",
+                    "options": {
+                        "kind": "miniMax",
+                        "responseFormat": "mp3",
+                        "instructions": null,
+                        "voices": []
+                    }
+                },
+                "credential": null,
+                "clearCredential": false
+            }
+        }),
+    );
+    assert_eq!(voices[0]["id"], "male-qn-qingse");
+    assert_eq!(voices[0]["name"], "青涩青年");
+
+    let audio: Value = invoke_ok(
+        &app,
+        "synthesize_tts",
+        json!({
+            "input": {
+                "profileId": "minimax-e2e",
+                "text": "你好 MyReader",
+                "language": "zh-CN",
+                "voiceId": "male-qn-qingse",
+                "speed": 1.0,
+                "pitch": null,
+                "acceptedMimeTypes": ["audio/mpeg"],
+                "cachePolicy": "bypass"
+            }
+        }),
+    );
+    assert_eq!(audio["mimeType"], "audio/mpeg");
+    let path = audio["path"].as_str().unwrap();
+    assert_eq!(std::fs::read(path).unwrap(), b"ID3\x04\x00\x00");
+    std::fs::remove_file(path).unwrap();
+
+    let captured = requests.lock().unwrap();
+    assert_eq!(
+        captured[0].authorization.as_deref(),
+        Some("Bearer minimax-secret-key")
+    );
+    assert!(
+        !serde_json::to_string(&read_persisted_config(&app).unwrap())
+            .unwrap()
+            .contains("minimax-secret-key")
+    );
+    drop(captured);
 
     shutdown.send(()).unwrap();
     server_thread.join().unwrap();
