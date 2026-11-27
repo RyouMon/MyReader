@@ -1,7 +1,9 @@
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { dehydrate, QueryClient } from "@tanstack/react-query"
 import { act, render, screen, waitFor } from "@testing-library/react-native"
+import { StatusBar } from "expo-status-bar"
 import type { ReactNode } from "react"
+import { Platform } from "react-native"
 import { SafeAreaProvider } from "react-native-safe-area-context"
 
 import RootLayout from "@/src/app/_layout"
@@ -9,6 +11,13 @@ import { queryClient } from "@/src/services/query/query-client"
 
 const mockReadCatalog = jest.fn(async () => [])
 const mockHydrateDataSources = jest.fn(async () => {})
+let mockPathname = "/"
+const mockStackProps = jest.fn()
+const mockScreenProps = jest.fn()
+
+jest.mock("expo-status-bar", () => ({
+  StatusBar: jest.fn(() => null),
+}))
 
 jest.mock("@/src/global.css", () => ({}))
 jest.mock("@/src/polyfills/reader-engine-globals", () => ({}))
@@ -28,24 +37,38 @@ jest.mock("expo-router", () => {
   const React = require("react")
   const { Text } = require("react-native")
   const { useQuery } = require("@tanstack/react-query")
-  function CatalogRoute() {
+  function CatalogRoute(props: {
+    children?: ReactNode
+    screenOptions?: unknown
+  }) {
+    mockStackProps(props.screenOptions)
     const { data } = useQuery({
       queryKey: ["books", "library"],
       queryFn: mockReadCatalog,
     })
     return React.createElement(
-      Text,
+      React.Fragment,
       null,
-      data === undefined
-        ? "Loading catalog"
-        : data.length === 0
-          ? "Empty library"
-          : "Deleted book",
+      props.children,
+      React.createElement(
+        Text,
+        null,
+        data === undefined
+          ? "Loading catalog"
+          : data.length === 0
+            ? "Empty library"
+            : "Deleted book",
+      ),
     )
   }
   return {
-    Stack: Object.assign(CatalogRoute, { Screen: () => null }),
-    usePathname: () => "/",
+    Stack: Object.assign(CatalogRoute, {
+      Screen: (props: unknown) => {
+        mockScreenProps(props)
+        return null
+      },
+    }),
+    usePathname: () => mockPathname,
   }
 })
 jest.mock("expo-router/react-navigation", () => ({
@@ -135,4 +158,89 @@ it("waits for disk cache restoration at app startup, then reads the committed ca
     queryClient.clear()
     previousClient.clear()
   }
+})
+
+describe("RootLayout status bar ownership", () => {
+  const originalPlatform = Platform.OS
+
+  beforeEach(() => {
+    jest.clearAllMocks()
+    mockPathname = "/"
+    jest.mocked(AsyncStorage.getItem).mockResolvedValue(null)
+  })
+
+  afterEach(async () => {
+    await act(async () => {})
+    await queryClient.cancelQueries()
+    queryClient.clear()
+    Object.defineProperty(Platform, "OS", {
+      configurable: true,
+      value: originalPlatform,
+    })
+  })
+
+  async function withRenderedRootLayout(
+    platform: "ios" | "android",
+    runAssertions: () => Promise<void>,
+  ) {
+    Object.defineProperty(Platform, "OS", {
+      configurable: true,
+      value: platform,
+    })
+    const view = render(
+      <SafeAreaProvider
+        initialMetrics={{
+          frame: { x: 0, y: 0, width: 400, height: 800 },
+          insets: { top: 0, right: 0, bottom: 0, left: 0 },
+        }}
+      >
+        <RootLayout />
+      </SafeAreaProvider>,
+    )
+    try {
+      await runAssertions()
+    } finally {
+      view.unmount()
+    }
+  }
+
+  it("omits expo-status-bar on iOS and delegates status bar traits to Stack", () =>
+    withRenderedRootLayout("ios", async () => {
+      await waitFor(() => expect(mockStackProps).toHaveBeenCalled())
+      expect(StatusBar).not.toHaveBeenCalled()
+      expect(mockStackProps).toHaveBeenCalledWith(
+        expect.objectContaining({
+          statusBarAnimation: "none",
+          statusBarHidden: false,
+          statusBarStyle: "dark",
+        }),
+      )
+      expect(mockScreenProps).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: "reader",
+          options: expect.objectContaining({
+            presentation: "fullScreenModal",
+            statusBarAnimation: "none",
+            statusBarHidden: false,
+            statusBarStyle: "dark",
+          }),
+        }),
+      )
+    }))
+
+  it("renders expo-status-bar on Android outside the reader route", () =>
+    withRenderedRootLayout("android", async () => {
+      await waitFor(() => expect(StatusBar).toHaveBeenCalled())
+      expect(jest.mocked(StatusBar).mock.calls[0]?.[0]).toEqual({
+        style: "dark",
+      })
+    }))
+
+  it("omits expo-status-bar on Android while on the reader route", () => {
+    mockPathname = "/reader/7"
+    return withRenderedRootLayout("android", async () => {
+      await waitFor(() => expect(mockStackProps).toHaveBeenCalled())
+      expect(StatusBar).not.toHaveBeenCalled()
+    })
+  })
 })

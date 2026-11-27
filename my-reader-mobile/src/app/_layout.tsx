@@ -88,9 +88,11 @@ function RootNavigator() {
   return (
     <>
       <NavigationThemeProvider value={navigationTheme}>
-        {pathname.startsWith("/reader") ? null : (
+        {/* iOS uses ViewController-based status bar appearance via react-native-screens;
+            mounting expo-status-bar calls RCTStatusBarManager and triggers a RedBox. */}
+        {Platform.OS !== "ios" && !pathname.startsWith("/reader") ? (
           <StatusBar style={statusBarStyle} />
-        )}
+        ) : null}
         <Stack
           screenOptions={{
             headerShown: false,
