@@ -64,13 +64,18 @@ it("includes the audition model's shared voices and provider credential identity
   expect(result.credential).toBe("draft-key")
 })
 it("prefills native provider defaults and fills discovered voice display names without overwriting custom ones", () => {
-  const minimax = newTtsProviderDraft("miniMax")
+  const minimax = newTtsProviderDraft("miniMax", undefined, {
+    regionCode: "CN",
+  })
   expect(minimax).toMatchObject({
     kind: "miniMax",
     endpoint: "https://api.minimaxi.com",
     modelScopedVoices: false,
   })
   expect(minimax.models[0]?.model).toBe("speech-2.8-turbo")
+  expect(
+    newTtsProviderDraft("miniMax", undefined, { regionCode: "US" }).endpoint,
+  ).toBe("https://api.minimax.io")
 
   const volcengine = newTtsProviderDraft("volcengine", "火山引擎（豆包语音）")
   expect(volcengine).toMatchObject({
