@@ -9,12 +9,14 @@ export function TtsModelDetails({
   draft,
   model,
   fieldErrors,
+  onCredentialRequired,
   onVoicesChange,
   onRefresh,
 }: {
   draft: TtsProviderDraft
   model: TtsModelDto
   fieldErrors?: Record<string, string>
+  onCredentialRequired?: () => void
   onVoicesChange: (voices: string[], names: Record<string, string>) => void
   onRefresh: () => void
 }) {
@@ -28,6 +30,7 @@ export function TtsModelDetails({
       draft={draft}
       model={model}
       fieldErrors={fieldErrors}
+      onCredentialRequired={onCredentialRequired}
       onChange={onVoicesChange}
       actions={
         canFetchVoices ? (

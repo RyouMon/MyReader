@@ -22,10 +22,21 @@ import TtsSettingsScreen from "./tts-settings-screen"
 
 let mockPlaybackRate = 1
 let mockFocus: (() => undefined | (() => void)) | undefined
+const mockAudioListeners = new Set<(status: Record<string, unknown>) => void>()
 const mockAudioPlayer = {
+  addListener: jest.fn(
+    (event: string, listener: (status: Record<string, unknown>) => void) => {
+      if (event === "playbackStatusUpdate") mockAudioListeners.add(listener)
+      return { remove: () => mockAudioListeners.delete(listener) }
+    },
+  ),
   pause: jest.fn(),
   play: jest.fn(() => mockPlaybackRate),
-  replace: jest.fn(),
+  replace: jest.fn(() => {
+    for (const listener of mockAudioListeners) {
+      listener({ didJustFinish: false, error: null, isLoaded: true })
+    }
+  }),
   // Reject assignment like the native getter-only property, even outside strict mode.
   get playbackRate() {
     return mockPlaybackRate
@@ -78,12 +89,8 @@ const mockProviderConfig = {
 }
 
 jest.mock("expo-audio", () => ({
+  setAudioModeAsync: jest.fn().mockResolvedValue(undefined),
   useAudioPlayer: (source: string | null) => mockUseAudioPlayer(source),
-  useAudioPlayerStatus: () => ({
-    didJustFinish: false,
-    error: null,
-    isLoaded: true,
-  }),
 }))
 
 jest.mock("expo-speech", () => ({
@@ -283,11 +290,10 @@ describe("TtsSettingsScreen preview", () => {
       ),
     )
     await waitFor(() =>
-      expect(mockUseAudioPlayer).toHaveBeenLastCalledWith(
+      expect(mockAudioPlayer.replace).toHaveBeenLastCalledWith(
         "file:///tmp/preview.mp3",
       ),
     )
-    expect(mockAudioPlayer.replace).not.toHaveBeenCalled()
     await waitFor(() => {
       expect(showAlertWithStatusBarRestore).not.toHaveBeenCalled()
       expect(mockAudioPlayer.play).toHaveBeenCalledTimes(1)

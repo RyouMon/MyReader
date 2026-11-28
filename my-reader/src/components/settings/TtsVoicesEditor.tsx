@@ -1,4 +1,5 @@
 import { useTtsRemoval } from "@/hooks/useTtsRemovalConfirmation"
+import { isTtsCredentialRequiredError } from "@my-reader/tools/tts-providers"
 import {
   ttsVoiceNameKey,
   updateTtsVoiceNames,
@@ -10,6 +11,7 @@ import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import { FieldGroup } from "@/components/ui/field"
 import { useTtsProviderTest } from "@/hooks/useTtsProviderTest"
+import { apiErrorKind } from "@/lib/api-error"
 import {
   modelVoices,
   ttsDraftInput,
@@ -23,6 +25,7 @@ export function TtsVoicesEditor({
   disabled,
   actions,
   fieldErrors,
+  onCredentialRequired,
   onChange,
 }: {
   draft: TtsProviderDraft
@@ -30,6 +33,7 @@ export function TtsVoicesEditor({
   disabled?: boolean
   actions?: ReactNode
   fieldErrors?: Record<string, string>
+  onCredentialRequired?: () => void
   onChange: (voices: string[], names: Record<string, string>) => void
 }) {
   const { t } = useTranslation()
@@ -93,8 +97,10 @@ export function TtsVoicesEditor({
             }
             disabled={disabled}
             fieldError={fieldErrors?.[`${prefix}-${index}-voice-id`]}
+            draft={draft}
             input={ttsDraftInput(draft, model)}
             canPlay={Boolean(voice.trim() && model?.model.trim())}
+            onCredentialRequired={onCredentialRequired}
             onIdChange={(id) => updateId(index, id)}
             onRemove={() => void remove(index)}
           />
@@ -112,8 +118,10 @@ function VoiceRow({
   onNameChange,
   disabled,
   fieldError,
+  draft,
   input,
   canPlay,
+  onCredentialRequired,
   onIdChange,
   onRemove,
 }: {
@@ -124,13 +132,24 @@ function VoiceRow({
   onNameChange: (name: string) => void
   disabled?: boolean
   fieldError?: string
+  draft: TtsProviderDraft
   input: UpsertTtsProviderInput
   canPlay: boolean
+  onCredentialRequired?: () => void
   onIdChange: (id: string) => void
   onRemove: () => void
 }) {
   const { t } = useTranslation()
-  const { state, error, test, stop } = useTtsProviderTest(input, voice.trim())
+  const { state, error, test, stop } = useTtsProviderTest(
+    input,
+    voice.trim(),
+    (cause) => {
+      if (!isTtsCredentialRequiredError(cause, draft, apiErrorKind(cause)))
+        return false
+      onCredentialRequired?.()
+      return true
+    },
+  )
   const active = state === "testing" || state === "playing"
   const label = voice || index + 1
   const playLabel = `${t(active ? "settings.speech.stopPreview" : "ttsSettings.test")} ${label}`

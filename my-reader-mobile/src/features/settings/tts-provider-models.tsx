@@ -1,4 +1,7 @@
-import { ttsProviderMeta } from "@my-reader/tools/tts-providers"
+import {
+  isTtsCredentialRequiredError,
+  ttsProviderMeta,
+} from "@my-reader/tools/tts-providers"
 import { useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Button, FormSelect, FormSwitch } from "@/src/components"
@@ -15,20 +18,26 @@ import {
 } from "@/src/domain/tts/tts-provider-draft"
 import { useTtsModelDiscovery } from "@/src/domain/tts/use-tts-model-discovery"
 import { useTtsRemoval } from "@/src/domain/tts/use-tts-removal-confirmation"
+import { appErrorKind } from "@/src/errors/kind"
 import { errorMessage } from "@/src/i18n/error-message"
-import type { MobileTtsModel } from "@/src/services/core/tts"
+import type { MobileTtsModel, QwenTtsModel } from "@/src/services/core/tts"
 import { Text, View } from "@/tw"
-import { ModelDiscovery } from "./model-discovery"
+import {
+  closeModelDiscovery,
+  openModelDiscovery,
+} from "./model-discovery-session"
 import { ProviderModels } from "./provider-models"
 import { TtsVoicesEditor } from "./tts-voices-editor"
 
 export function TtsProviderModels({
   draft,
   onChange,
+  onCredentialRequired,
   validation,
 }: {
   draft: TtsProviderDraft
   onChange: (draft: TtsProviderDraft) => void
+  onCredentialRequired?: () => void
   validation: ReturnType<typeof useFormValidation>
 }) {
   const { t } = useTranslation()
@@ -45,10 +54,10 @@ export function TtsProviderModels({
   useEffect(() => {
     if (invalidDetails >= 0) setSelected(invalidDetails)
   }, [invalidDetails])
-  const [showModels, setShowModels] = useState(false)
   const { discover, voices: importing, fetchVoices } = useTtsModelDiscovery()
   const meta = ttsProviderMeta(draft.kind)
   const request = useRef<AbortController | null>(null)
+  const activeDiscoverySession = useRef<number | null>(null)
   const identity = JSON.stringify([
     draft.id,
     draft.kind,
@@ -57,18 +66,28 @@ export function TtsProviderModels({
     draft.clearCredential,
   ])
   const current = useRef(draft)
-  current.current = draft
   useEffect(() => {
-    setShowModels(false)
+    current.current = draft
+  }, [draft])
+  useEffect(() => {
+    if (activeDiscoverySession.current !== null) {
+      closeModelDiscovery(activeDiscoverySession.current)
+      activeDiscoverySession.current = null
+    }
     return () => request.current?.abort()
   }, [identity])
+  useEffect(
+    () => () => {
+      if (activeDiscoverySession.current !== null) {
+        closeModelDiscovery(activeDiscoverySession.current)
+        activeDiscoverySession.current = null
+      }
+    },
+    [],
+  )
   const busy =
     discover.isPending || importing.isPending || fetchVoices.isPending
   const scoped = usesModelVoices(draft)
-  const options = discover.data ?? []
-  const catalog = options.flatMap((option) =>
-    option.qwen ? [option.qwen] : [],
-  )
   const patch = (index: number, changes: Partial<MobileTtsModel>) =>
     onChange({
       ...draft,
@@ -82,25 +101,54 @@ export function TtsProviderModels({
     request.current = controller
     return controller
   }
-  const add = (ids: string[]) => {
-    const controller = startRequest()
-    importing.mutate(
-      { draft, ids, catalog, signal: controller.signal },
-      {
-        onSuccess: (models) => {
-          if (controller.signal.aborted) return
-          const latest = current.current
-          const unique = models.filter(
-            (model) =>
-              !latest.models.some((old) => old.model.trim() === model.model),
-          )
-          const existing = latest.models.filter((model) => model.model.trim())
-          onChange({ ...latest, models: [...existing, ...unique] })
-          setSelected(existing.length)
-          setShowModels(false)
-        },
-      },
+  const handleCredentialError = (error: unknown, reset: () => void) => {
+    if (
+      !isTtsCredentialRequiredError(error, current.current, appErrorKind(error))
     )
+      return
+    reset()
+    onCredentialRequired?.()
+  }
+  const add = async (
+    ids: string[],
+    discoveredOptions: { id: string; qwen?: QwenTtsModel }[],
+  ) => {
+    const controller = startRequest()
+    const catalog = discoveredOptions.flatMap((option) =>
+      option.qwen ? [option.qwen] : [],
+    )
+    try {
+      const models = await importing.mutateAsync({
+        draft: current.current,
+        ids,
+        catalog,
+        signal: controller.signal,
+      })
+      if (controller.signal.aborted) return true
+      const latest = current.current
+      const unique = models.filter(
+        (model) =>
+          !latest.models.some((old) => old.model.trim() === model.model),
+      )
+      const existing = latest.models.filter((model) => model.model.trim())
+      onChange({ ...latest, models: [...existing, ...unique] })
+      setSelected(existing.length)
+      return true
+    } catch (error) {
+      if (controller.signal.aborted) return true
+      if (
+        isTtsCredentialRequiredError(
+          error,
+          current.current,
+          appErrorKind(error),
+        )
+      ) {
+        importing.reset()
+        onCredentialRequired?.()
+        return true
+      }
+      throw error
+    }
   }
   const refreshScoped = (index: number) => {
     const controller = startRequest()
@@ -120,6 +168,10 @@ export function TtsProviderModels({
             ),
           })
         },
+        onError: (error) => {
+          if (!controller.signal.aborted)
+            handleCredentialError(error, fetchVoices.reset)
+        },
       },
     )
   }
@@ -131,6 +183,10 @@ export function TtsProviderModels({
         onSuccess: (discovered) => {
           if (controller.signal.aborted) return
           onChange(mergeSharedVoices(current.current, discovered))
+        },
+        onError: (error) => {
+          if (!controller.signal.aborted)
+            handleCredentialError(error, fetchVoices.reset)
         },
       },
     )
@@ -146,6 +202,7 @@ export function TtsProviderModels({
         draft={draft}
         model={model}
         validation={validation}
+        onCredentialRequired={onCredentialRequired}
         onChange={(voices, names) =>
           onChange(updateVoices(draft, model?.id, voices, names))
         }
@@ -174,7 +231,17 @@ export function TtsProviderModels({
     onChange({ ...draft, models: [...draft.models, model] })
     setSelected(draft.models.length)
   }
-  const discoveryError = discover.error || importing.error || fetchVoices.error
+  const rawDiscoveryError =
+    discover.error || importing.error || fetchVoices.error
+  const discoveryError =
+    rawDiscoveryError &&
+    !isTtsCredentialRequiredError(
+      rawDiscoveryError,
+      draft,
+      appErrorKind(rawDiscoveryError),
+    )
+      ? rawDiscoveryError
+      : null
   return (
     <View className="gap-3">
       {discoveryError ? (
@@ -192,15 +259,6 @@ export function TtsProviderModels({
           label={t("aiProviders.modelScopedVoices")}
           value={scoped}
           onValueChange={(value) => onChange(setVoiceScope(draft, value))}
-        />
-      ) : null}
-      {showModels ? (
-        <ModelDiscovery
-          models={options}
-          existing={draft.models.map((model) => model.model)}
-          onAdd={add}
-          onClose={() => setShowModels(false)}
-          busy={busy}
         />
       ) : null}
       <ProviderModels
@@ -233,8 +291,25 @@ export function TtsProviderModels({
               discover.mutate(
                 { draft, signal: controller.signal },
                 {
-                  onSuccess: () => {
-                    if (!controller.signal.aborted) setShowModels(true)
+                  onSuccess: (discoveredOptions) => {
+                    if (controller.signal.aborted) return
+                    const sessionId = openModelDiscovery({
+                      models: discoveredOptions,
+                      existing: current.current.models.map(
+                        (model) => model.model,
+                      ),
+                      onAdd: (ids) => add(ids, discoveredOptions),
+                      onClose: () => {
+                        if (activeDiscoverySession.current === sessionId) {
+                          activeDiscoverySession.current = null
+                        }
+                      },
+                    })
+                    activeDiscoverySession.current = sessionId
+                  },
+                  onError: (error) => {
+                    if (!controller.signal.aborted)
+                      handleCredentialError(error, discover.reset)
                   },
                 },
               )
@@ -255,6 +330,7 @@ export function TtsProviderModels({
           canFetchVoices={
             meta.supportsVoiceDiscovery && Boolean(draft.endpoint.trim())
           }
+          onCredentialRequired={onCredentialRequired}
           onFetchVoices={refreshShared}
           onChange={onChange}
         />
@@ -269,6 +345,7 @@ function SharedVoices({
   busy,
   fetchingVoices,
   canFetchVoices,
+  onCredentialRequired,
   onFetchVoices,
   onChange,
 }: {
@@ -277,6 +354,7 @@ function SharedVoices({
   busy: boolean
   fetchingVoices: boolean
   canFetchVoices: boolean
+  onCredentialRequired?: () => void
   onFetchVoices: (model?: MobileTtsModel) => void
   onChange: (draft: TtsProviderDraft) => void
 }) {
@@ -294,6 +372,7 @@ function SharedVoices({
         draft={draft}
         model={model}
         validation={validation}
+        onCredentialRequired={onCredentialRequired}
         actions={
           canFetchVoices ? (
             <Button

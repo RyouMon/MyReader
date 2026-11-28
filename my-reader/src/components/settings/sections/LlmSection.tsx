@@ -300,33 +300,29 @@ function LlmProviderForm({
             </FieldGroup>
           </FieldGroup>
           <Separator />
+          {showModels && models.data ? (
+            <ModelDiscovery
+              models={models.data.map((id) => ({ id }))}
+              existing={draft.models.map((m) => m.model)}
+              onClose={() => setShowModels(false)}
+              onAdd={(ids) => {
+                setDraft({
+                  ...draft,
+                  models: [
+                    ...draft.models.filter((m) => m.model.trim()),
+                    ...ids
+                      .filter((id) => !draft.models.some((m) => m.model === id))
+                      .map(newModel),
+                  ],
+                })
+                setSelected(null)
+                setShowModels(false)
+              }}
+            />
+          ) : null}
           <ProviderModels
             fieldErrors={fieldErrors}
             detailsClassName="col-span-1"
-            discovery={
-              showModels && models.data ? (
-                <ModelDiscovery
-                  models={models.data.map((id) => ({ id }))}
-                  existing={draft.models.map((m) => m.model)}
-                  onClose={() => setShowModels(false)}
-                  onAdd={(ids) => {
-                    setDraft({
-                      ...draft,
-                      models: [
-                        ...draft.models.filter((m) => m.model.trim()),
-                        ...ids
-                          .filter(
-                            (id) => !draft.models.some((m) => m.model === id),
-                          )
-                          .map(newModel),
-                      ],
-                    })
-                    setSelected(null)
-                    setShowModels(false)
-                  }}
-                />
-              ) : null
-            }
             models={draft.models}
             selected={selected}
             onSelect={setSelected}

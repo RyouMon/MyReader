@@ -10,6 +10,7 @@ let stopActivePreview: (() => void) | undefined
 export function useTtsProviderTest(
   input: UpsertTtsProviderInput,
   voiceId: string,
+  onError?: (error: unknown) => boolean,
 ) {
   const [state, setState] = useState<
     "idle" | "testing" | "playing" | "success"
@@ -17,6 +18,8 @@ export function useTtsProviderTest(
   const [error, setError] = useState<string | null>(null)
   const request = useRef<string | null>(null)
   const audio = useRef<HTMLAudioElement | null>(null)
+  const onErrorRef = useRef(onError)
+  onErrorRef.current = onError
   const identity = JSON.stringify([input, voiceId])
   const stop = useCallback(() => {
     if (request.current) void api.cancelTtsSynthesis(request.current)
@@ -69,6 +72,7 @@ export function useTtsProviderTest(
     } catch (error) {
       if (request.current !== id) return
       stop()
+      if (onErrorRef.current?.(error)) return
       setError(errorMessage(error))
     } finally {
       if (request.current === id) request.current = null

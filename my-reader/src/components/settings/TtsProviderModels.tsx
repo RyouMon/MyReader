@@ -1,6 +1,9 @@
-import { ttsProviderMeta } from "@my-reader/tools/tts-providers"
+import {
+  isTtsCredentialRequiredError,
+  ttsProviderMeta,
+} from "@my-reader/tools/tts-providers"
 import { Loader2 } from "lucide-react"
-import { useRef, useState } from "react"
+import { type CSSProperties, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { FormSelect, FormSelectItem } from "@/components/common/FormSelect"
 import { FormSwitch } from "@/components/common/FormSwitch"
@@ -14,6 +17,7 @@ import { FieldGroup } from "@/components/ui/field"
 import { Separator } from "@/components/ui/separator"
 import { useTtsModelDiscovery } from "@/hooks/useTtsModelDiscovery"
 import { useTtsRemoval } from "@/hooks/useTtsRemovalConfirmation"
+import { apiErrorKind } from "@/lib/api-error"
 import { errorMessage } from "@/lib/error-presentation"
 import type { TtsModelDto } from "@/lib/tauri-specta"
 import {
@@ -56,11 +60,15 @@ export function TtsProviderModels({
   draft,
   previewModel,
   fieldErrors,
+  themeStyle,
+  onCredentialRequired,
   onChange,
 }: {
   draft: TtsProviderDraft
   previewModel?: TtsModelDto
   fieldErrors?: Record<string, string>
+  themeStyle?: CSSProperties
+  onCredentialRequired?: () => void
   onChange: (draft: TtsProviderDraft) => void
 }) {
   const { t } = useTranslation()
@@ -94,6 +102,14 @@ export function TtsProviderModels({
         index === i ? { ...model, ...change } : model,
       ),
     })
+  const handleCredentialError = (error: unknown, reset: () => void) => {
+    if (
+      !isTtsCredentialRequiredError(error, current.current, apiErrorKind(error))
+    )
+      return
+    reset()
+    onCredentialRequired?.()
+  }
   const addModels = (ids: string[]) => {
     const snapshot = JSON.stringify(draft)
     importing.mutate(
@@ -112,6 +128,7 @@ export function TtsProviderModels({
           setSelected(previous.length)
           setShowDiscovery(false)
         },
+        onError: (error) => handleCredentialError(error, importing.reset),
       },
     )
   }
@@ -185,6 +202,7 @@ export function TtsProviderModels({
           if (snapshot !== JSON.stringify(current.current)) return
           patch(index, mergeTtsVoices(model, discovered))
         },
+        onError: (error) => handleCredentialError(error, fetchVoices.reset),
       },
     )
   }
@@ -197,10 +215,21 @@ export function TtsProviderModels({
           if (snapshot !== JSON.stringify(current.current)) return
           onChange(mergeSharedTtsVoices(draft, discovered))
         },
+        onError: (error) => handleCredentialError(error, fetchVoices.reset),
       },
     )
   }
-  const discoveryError = discover.error || importing.error || fetchVoices.error
+  const rawDiscoveryError =
+    discover.error || importing.error || fetchVoices.error
+  const discoveryError =
+    rawDiscoveryError &&
+    !isTtsCredentialRequiredError(
+      rawDiscoveryError,
+      draft,
+      apiErrorKind(rawDiscoveryError),
+    )
+      ? rawDiscoveryError
+      : null
   return (
     <FieldGroup>
       {meta.allowsCustomVoiceScope ? (
@@ -215,19 +244,19 @@ export function TtsProviderModels({
       {discoveryError ? (
         <StatusNotice tone="error">{errorMessage(discoveryError)}</StatusNotice>
       ) : null}
+      {showDiscovery && options ? (
+        <ModelDiscovery
+          models={options}
+          existing={draft.models.map((model) => model.model)}
+          busy={importing.isPending}
+          themeStyle={themeStyle}
+          onAdd={addModels}
+          onClose={() => setShowDiscovery(false)}
+        />
+      ) : null}
       <fieldset disabled={busy} className="min-w-0">
         <ProviderModels
           fieldErrors={fieldErrors}
-          discovery={
-            showDiscovery && options ? (
-              <ModelDiscovery
-                models={options}
-                existing={draft.models.map((model) => model.model)}
-                onAdd={addModels}
-                onClose={() => setShowDiscovery(false)}
-              />
-            ) : null
-          }
           models={draft.models}
           selected={selected}
           onSelect={setSelected}
@@ -249,6 +278,8 @@ export function TtsProviderModels({
                       if (identity(current.current) === source)
                         setShowDiscovery(true)
                     },
+                    onError: (error) =>
+                      handleCredentialError(error, discover.reset),
                   },
                 )
               }}
@@ -264,6 +295,7 @@ export function TtsProviderModels({
                   draft={draft}
                   model={draft.models[index]}
                   fieldErrors={fieldErrors}
+                  onCredentialRequired={onCredentialRequired}
                   onVoicesChange={(voices, names) =>
                     updateVoices(draft.models[index], voices, names)
                   }
@@ -281,6 +313,7 @@ export function TtsProviderModels({
             model={previewModel}
             fieldErrors={fieldErrors}
             disabled={busy}
+            onCredentialRequired={onCredentialRequired}
             actions={
               <SharedVoicesFetchAction
                 visible={

@@ -28,6 +28,10 @@ it("masks saved credentials and toggles visibility without changing the value", 
     />,
   )
   expect(screen.getByLabelText("API key").props.secureTextEntry).toBe(true)
+  expect(screen.getByLabelText("API key").props.textContentType).toBe(
+    "oneTimeCode",
+  )
+  expect(screen.getByLabelText("API key").props.autoComplete).toBe("off")
   fireEvent.press(screen.getByLabelText("passwordField.show"))
   expect(screen.getByLabelText("API key").props.secureTextEntry).toBe(false)
   expect(screen.getByLabelText("API key").props.value).toBe("fixture-key")

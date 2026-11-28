@@ -11,7 +11,12 @@ export function FormPasswordField(props: ComponentProps<typeof FormTextField>) {
     <FormTextField
       autoCapitalize="none"
       autoCorrect={false}
-      textContentType="none"
+      autoComplete="off"
+      importantForAutofill="no"
+      // iOS still runs Keychain "Save Password?" heuristics on secureTextEntry fields
+      // when textContentType is unset or "none" (mapped to ""). "oneTimeCode" opts out
+      // of password manager save prompts while allowing callers to override via props.
+      textContentType="oneTimeCode"
       {...props}
       secureTextEntry={!visible}
       right={

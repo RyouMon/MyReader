@@ -1,17 +1,25 @@
 import {
   TTS_PROVIDER_KINDS,
+  ttsEndpointSuggestions,
   ttsProviderMeta,
 } from "@my-reader/tools/tts-providers"
 import { ttsUsageMessage } from "@my-reader/tools/tts-selection-usage"
 import { router, Stack, useLocalSearchParams } from "expo-router"
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { ActivityIndicator } from "react-native"
-import { ListRow, Screen, SectionCard, SectionLabel } from "@/src/components"
+import {
+  ListRow,
+  Screen,
+  SectionCard,
+  SectionLabel,
+  SuggestionsOverlayHost,
+} from "@/src/components"
 import { useFormValidation } from "@/src/components/ui/use-form-validation"
 import { showErrorAlert } from "@/src/constants/alert-with-status-bar"
 import { useThemePalette } from "@/src/design/tokens"
 import {
+  detectMobileTtsRegionContext,
   newTtsDraft,
   type TtsProviderDraft,
 } from "@/src/domain/tts/tts-provider-draft"
@@ -52,6 +60,22 @@ function ProviderForm({
   validation: ReturnType<typeof useFormValidation>
 }) {
   const { t } = useTranslation()
+  const [credentialError, setCredentialError] = useState<string | null>(null)
+  useEffect(() => {
+    setCredentialError(null)
+  }, [draft.id, draft.kind])
+  const endpointSuggestions = useMemo(
+    () =>
+      ttsEndpointSuggestions(draft.kind, detectMobileTtsRegionContext()).map(
+        (item) => ({
+          value: item.url,
+          label: item.labelKey
+            ? t(item.labelKey)
+            : (item.fallbackLabel ?? item.url),
+        }),
+      ),
+    [draft.kind, t],
+  )
   const credentialPlaceholder =
     draft.kind === "volcengine"
       ? t("ttsProviders.volcengineCredentialHint")
@@ -59,28 +83,39 @@ function ProviderForm({
         ? t("settings.tts.credentialPlaceholder")
         : undefined
   return (
-    <Screen>
-      <View className="gap-3">
-        <ProviderConnectionFields
-          kind="tts"
-          value={draft}
-          credentialPlaceholder={credentialPlaceholder}
-          validation={validation}
-          onChange={(connection) =>
-            onChange({
-              ...draft,
-              ...connection,
-              clearCredential: !connection.credential.trim(),
-            })
-          }
-        />
-        <TtsProviderModels
-          draft={draft}
-          onChange={onChange}
-          validation={validation}
-        />
-      </View>
-    </Screen>
+    <SuggestionsOverlayHost testID="tts-suggestions-host">
+      <Screen>
+        <View className="gap-3">
+          <ProviderConnectionFields
+            kind="tts"
+            value={draft}
+            credentialPlaceholder={credentialPlaceholder}
+            credentialError={credentialError ?? undefined}
+            endpointSuggestions={endpointSuggestions}
+            endpointSuggestionsLabel={t("ttsProviders.endpointSuggestions")}
+            validation={validation}
+            onChange={(connection) => {
+              if (connection.credential !== draft.credential) {
+                setCredentialError(null)
+              }
+              onChange({
+                ...draft,
+                ...connection,
+                clearCredential: !connection.credential.trim(),
+              })
+            }}
+          />
+          <TtsProviderModels
+            draft={draft}
+            onChange={onChange}
+            onCredentialRequired={() =>
+              setCredentialError(t("ttsProviders.credentialRequired"))
+            }
+            validation={validation}
+          />
+        </View>
+      </Screen>
+    </SuggestionsOverlayHost>
   )
 }
 

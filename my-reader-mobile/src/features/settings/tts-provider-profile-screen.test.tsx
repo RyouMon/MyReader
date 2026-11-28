@@ -4,23 +4,59 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react-native"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import { View } from "react-native"
 import * as tts from "@/src/services/core/tts"
 import {
   showAlertWithStatusBarRestore,
   showErrorAlert,
 } from "@/src/constants/alert-with-status-bar"
 import TtsProviderProfileScreen from "./tts-provider-profile-screen"
+import {
+  closeModelDiscovery,
+  useModelDiscoveryStore,
+} from "./model-discovery-session"
 
 const mockTranslate = (key: string) => key
 const mockRouter = { back: jest.fn(), push: jest.fn(), dismissTo: jest.fn() }
 const mockHeader = jest.fn((options: unknown) => ({ options, toolbar: null }))
 let mockParams: { kind?: string; providerId?: string } = {}
-const mockPlayer = { play: jest.fn(), setPlaybackRate: jest.fn() }
+let mockRegion = {
+  regionCode: "CN",
+  languageTag: "zh-CN",
+  timeZone: "Asia/Shanghai",
+}
+const mockAudioListeners = new Set<(status: Record<string, unknown>) => void>()
+const mockPlayer = {
+  addListener: jest.fn(
+    (event: string, listener: (status: Record<string, unknown>) => void) => {
+      if (event === "playbackStatusUpdate") mockAudioListeners.add(listener)
+      return { remove: () => mockAudioListeners.delete(listener) }
+    },
+  ),
+  pause: jest.fn(),
+  play: jest.fn(),
+  replace: jest.fn(() => {
+    for (const listener of mockAudioListeners) {
+      listener({ isLoaded: true, didJustFinish: false })
+    }
+  }),
+  setPlaybackRate: jest.fn(),
+}
+jest.mock("expo-localization", () => ({
+  getLocales: () => [
+    {
+      regionCode: mockRegion.regionCode,
+      languageTag: mockRegion.languageTag,
+    },
+  ],
+  getCalendars: () => [{ timeZone: mockRegion.timeZone }],
+}))
 jest.mock("expo-audio", () => ({
+  setAudioModeAsync: jest.fn().mockResolvedValue(undefined),
   useAudioPlayer: () => mockPlayer,
-  useAudioPlayerStatus: () => ({ isLoaded: true }),
 }))
 jest.mock("expo-router", () => ({
   Stack: { Screen: () => null },
@@ -43,7 +79,13 @@ jest.mock("@/tw", () => {
   const rn = jest.requireActual("react-native")
   return { Text: rn.Text, TextInput: rn.TextInput, View: rn.View }
 })
-jest.mock("@/src/design/tokens", () => ({ useThemePalette: () => ({}) }))
+jest.mock("@/src/design/tokens", () => ({
+  useTheme: () => ({
+    colorScheme: "light",
+    palette: { text: "#3b2f2f", surface: "#f0e8db" },
+  }),
+  useThemePalette: () => ({ text: "#3b2f2f", surface: "#f0e8db" }),
+}))
 jest.mock("@/src/navigation/hooks/use-screen-header", () => ({
   useScreenHeader: (options: unknown) => mockHeader(options),
 }))
@@ -103,6 +145,7 @@ jest.mock("@/src/components", () => {
     ...jest.requireActual("@/test/fixtures/form-controls"),
     ...jest.requireActual("@/src/components/ui/form-input-row"),
     ...jest.requireActual("@/src/components/ui/form-switch"),
+    ...jest.requireActual("@/src/components/ui/suggestions-overlay"),
     Button,
     IconButton: ({ label, onPress, disabled, ...props }: any) =>
       React.createElement(Button, {
@@ -177,6 +220,23 @@ function addVoice(id: string) {
 
 beforeEach(() => {
   jest.clearAllMocks()
+  closeModelDiscovery()
+  jest.spyOn(View.prototype, "measureInWindow").mockImplementation(function (
+    this: View,
+    callback,
+  ) {
+    callback(
+      0,
+      this.props.testID === "tts-suggestions-host" ? 0 : 120,
+      360,
+      this.props.testID === "tts-suggestions-host" ? 720 : 56,
+    )
+  })
+  mockRegion = {
+    regionCode: "CN",
+    languageTag: "zh-CN",
+    timeZone: "Asia/Shanghai",
+  }
   jest.mocked(tts.saveTtsProvider).mockResolvedValue({} as never)
   jest
     .mocked(tts.discoverQwenTtsVoices)
@@ -198,6 +258,7 @@ beforeEach(() => {
   })
 })
 afterEach(() => {
+  jest.restoreAllMocks()
   clients.forEach((client) => client.clear())
   clients.length = 0
 })
@@ -250,8 +311,14 @@ it("saves catalog models added after the shared voices without assigning a voice
   addVoice("warm")
   addVoice("bright")
   fireEvent.press(screen.getByText("providerEditor.fetchModels"))
-  for (const id of additions) fireEvent.press(await screen.findByText(id))
-  fireEvent.press(screen.getByText("providerEditor.addSelected"))
+  await waitFor(() =>
+    expect(mockRouter.push).toHaveBeenCalledWith("/model-discovery"),
+  )
+  const session = useModelDiscoveryStore.getState().session
+  expect(session?.models.map((item) => item.id)).toEqual(additions)
+  await act(async () => {
+    await session?.onAdd(additions)
+  })
   await screen.findByDisplayValue("tts-d")
   save()
   await waitFor(() => expect(tts.saveTtsProvider).toHaveBeenCalledTimes(1))
@@ -330,8 +397,14 @@ it.each([
     "draft-key",
   )
   fireEvent.press(screen.getByText("providerEditor.fetchModels"))
-  fireEvent.press(await screen.findByText("qwen-new"))
-  fireEvent.press(screen.getByText("providerEditor.addSelected"))
+  await waitFor(() =>
+    expect(mockRouter.push).toHaveBeenCalledWith("/model-discovery"),
+  )
+  const session = useModelDiscoveryStore.getState().session
+  expect(session?.models.map((item) => item.id)).toContain("qwen-new")
+  await act(async () => {
+    await session?.onAdd(["qwen-new"])
+  })
   await screen.findByDisplayValue("account")
   expect(screen.getByDisplayValue("preset")).toBeTruthy()
   fireEvent.changeText(screen.getByDisplayValue("preset"), "future-voice")
@@ -445,7 +518,8 @@ it("discards fetched models after the endpoint changes", async () => {
   )
   await act(async () => resolve(["stale-model"]))
   expect(signal.aborted).toBe(true)
-  expect(screen.queryByText("stale-model")).toBeNull()
+  expect(mockRouter.push).not.toHaveBeenCalledWith("/model-discovery")
+  expect(useModelDiscoveryStore.getState().session).toBeNull()
 })
 
 it("requires confirmation and successful persistence before leaving a deleted provider", async () => {
@@ -538,4 +612,91 @@ it("configures Volcengine with model-scoped voices and credential format hint", 
     "ttsProviders.volcengineCredentialHint",
   )
   expect(screen.queryByLabelText("aiProviders.modelScopedVoices")).toBeNull()
+})
+
+it("prefills region-specific endpoints for Qwen and MiniMax and manages blank-field suggestions", () => {
+  mockRegion = {
+    regionCode: "US",
+    languageTag: "zh-CN",
+    timeZone: "America/New_York",
+  }
+  const first = mount({ kind: "miniMax" })
+  expect(screen.getByTestId("tts-provider-endpoint").props.value).toBe(
+    "https://api.minimax.io",
+  )
+  expect(screen.queryByTestId("tts-endpoint-suggestions")).toBeNull()
+  first.unmount()
+
+  mount({ kind: "qwen" })
+  const endpoint = screen.getByTestId("tts-provider-endpoint")
+  expect(endpoint.props.value).toBe(
+    "https://dashscope-intl.aliyuncs.com/api/v1",
+  )
+  expect(screen.queryByTestId("tts-endpoint-suggestions")).toBeNull()
+
+  fireEvent.changeText(endpoint, "")
+  fireEvent(endpoint, "focus")
+  const host = screen.getByTestId("tts-suggestions-host")
+  expect(within(host).getByTestId("tts-endpoint-suggestions")).toBeTruthy()
+  expect(
+    within(host).getByText("https://dashscope-intl.aliyuncs.com/api/v1"),
+  ).toBeTruthy()
+  expect(
+    within(host).getByText("https://dashscope.aliyuncs.com/api/v1"),
+  ).toBeTruthy()
+
+  fireEvent.press(within(host).getByTestId("tts-endpoint-suggestions-dismiss"))
+  expect(screen.queryByTestId("tts-endpoint-suggestions")).toBeNull()
+
+  fireEvent(endpoint, "pressIn")
+  expect(within(host).getByTestId("tts-endpoint-suggestions")).toBeTruthy()
+
+  fireEvent.changeText(endpoint, "h")
+  expect(screen.queryByTestId("tts-endpoint-suggestions")).toBeNull()
+
+  fireEvent.changeText(endpoint, "")
+  fireEvent(endpoint, "focus")
+  fireEvent.press(
+    within(host).getByLabelText(
+      "ttsProviders.endpoints.dashscopeChina, https://dashscope.aliyuncs.com/api/v1",
+    ),
+  )
+  expect(screen.getByTestId("tts-provider-endpoint").props.value).toBe(
+    "https://dashscope.aliyuncs.com/api/v1",
+  )
+  expect(screen.queryByTestId("tts-endpoint-suggestions")).toBeNull()
+})
+
+it("shows inline credential field errors instead of generic errors when discovery or preview require a credential", async () => {
+  const credentialError = new Error(
+    "CREDENTIAL_ERROR: TTS_ERROR: unauthorized:TTS_CREDENTIAL_REQUIRED",
+  )
+  jest.mocked(tts.getQwenTtsModels).mockRejectedValue(credentialError)
+  jest.mocked(tts.discoverTtsVoices).mockRejectedValue(credentialError)
+  jest.mocked(tts.previewTtsProvider).mockRejectedValue(credentialError)
+
+  const qwen = mount({ kind: "qwen" })
+  fireEvent.press(screen.getByText("providerEditor.fetchModels"))
+  await screen.findByText("ttsProviders.credentialRequired")
+  expect(screen.queryByText(/TTS_CREDENTIAL_REQUIRED/)).toBeNull()
+
+  fireEvent.changeText(screen.getByTestId("tts-provider-credential"), "k")
+  expect(screen.queryByText("ttsProviders.credentialRequired")).toBeNull()
+  qwen.unmount()
+
+  mount({ kind: "miniMax" })
+  fireEvent.press(screen.getByText("providerEditor.fetchVoices"))
+  await screen.findByText("ttsProviders.credentialRequired")
+  expect(screen.queryByText(/TTS_CREDENTIAL_REQUIRED/)).toBeNull()
+
+  fireEvent.changeText(screen.getByTestId("tts-provider-credential"), "x")
+  fireEvent.changeText(screen.getByTestId("tts-provider-credential"), "")
+  expect(screen.queryByText("ttsProviders.credentialRequired")).toBeNull()
+
+  addVoice("male-qn-qingse")
+  fireEvent.press(
+    screen.getByLabelText("settings.tts.previewAction male-qn-qingse"),
+  )
+  await screen.findByText("ttsProviders.credentialRequired")
+  expect(screen.queryByText(/TTS_CREDENTIAL_REQUIRED/)).toBeNull()
 })

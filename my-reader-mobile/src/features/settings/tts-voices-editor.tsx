@@ -1,4 +1,5 @@
 import { useTtsRemoval } from "@/src/domain/tts/use-tts-removal-confirmation"
+import { isTtsCredentialRequiredError } from "@my-reader/tools/tts-providers"
 import {
   ttsVoiceNameKey,
   updateTtsVoiceNames,
@@ -18,6 +19,7 @@ import {
   type TtsProviderDraft,
 } from "@/src/domain/tts/tts-provider-draft"
 import { useTtsVoicePreview } from "@/src/domain/tts/use-tts-voice-preview"
+import { appErrorKind } from "@/src/errors/kind"
 import type { MobileTtsModel } from "@/src/services/core/tts"
 import { Text, View } from "@/tw"
 import { ProviderTextField } from "./provider-text-field"
@@ -28,12 +30,14 @@ export function TtsVoicesEditor({
   model,
   validation,
   actions,
+  onCredentialRequired,
   onChange,
 }: {
   draft: TtsProviderDraft
   model?: MobileTtsModel
   validation: ReturnType<typeof useFormValidation>
   actions?: ReactNode
+  onCredentialRequired?: () => void
   onChange: (voices: string[], names: Record<string, string>) => void
 }) {
   const { t } = useTranslation()
@@ -43,7 +47,15 @@ export function TtsVoicesEditor({
   const voices = scoped ? (model?.voices ?? []) : draft.voices
   const names = (scoped ? model?.voiceNames : draft.voiceNames) ?? {}
   const group = scoped ? model?.id : "shared"
-  const preview = useTtsVoicePreview(JSON.stringify([draft, model?.id]))
+  const preview = useTtsVoicePreview(
+    JSON.stringify([draft, model?.id]),
+    (cause) => {
+      if (!isTtsCredentialRequiredError(cause, draft, appErrorKind(cause)))
+        return false
+      onCredentialRequired?.()
+      return true
+    },
+  )
   const rename = (index: number, id: string) => {
     const next = [...voices]
     next[index] = id

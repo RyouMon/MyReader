@@ -24,6 +24,62 @@ export type TtsProviderMetadata = {
   requiresCredential: boolean
 }
 
+export type TtsRegionContext = {
+  regionCode?: string | null
+  timeZone?: string | null
+  locale?: string | null
+  locales?: readonly (string | null | undefined)[] | null
+}
+
+export type TtsEndpointSuggestionLabelKey =
+  | "ttsProviders.volcengine"
+  | "ttsProviders.endpoints.china"
+  | "ttsProviders.endpoints.international"
+  | "ttsProviders.endpoints.dashscopeChina"
+  | "ttsProviders.endpoints.dashscopeInternational"
+  | "ttsProviders.endpoints.qianwen"
+  | "ttsProviders.endpoints.qwenTokenPlan"
+
+export type TtsEndpointSuggestion = {
+  url: string
+  labelKey?: TtsEndpointSuggestionLabelKey
+  fallbackLabel?: string
+}
+
+export type TtsCredentialDraftState = {
+  credential?: string | null
+  hasCredential?: boolean
+  clearCredential?: boolean
+}
+
+const QWEN_CHINA_ENDPOINT = "https://dashscope.aliyuncs.com/api/v1"
+const QWEN_INTERNATIONAL_ENDPOINT = "https://dashscope-intl.aliyuncs.com/api/v1"
+const QWEN_QIANWEN_ENDPOINT = "https://maas.qianwenaiapi.com/api/v1"
+const QWEN_TOKEN_PLAN_ENDPOINT =
+  "wss://token-plan.maas.qianwenaiapi.com/api-ws/v1/inference"
+const MINIMAX_CHINA_ENDPOINT = "https://api.minimaxi.com"
+const MINIMAX_INTERNATIONAL_ENDPOINT = "https://api.minimax.io"
+
+const CHINA_MAINLAND_TIMEZONES = new Set([
+  "Asia/Shanghai",
+  "Asia/Chongqing",
+  "Asia/Chungking",
+  "Asia/Harbin",
+  "Asia/Kashgar",
+  "Asia/Urumqi",
+  "PRC",
+])
+
+const GENERIC_UTC_TIMEZONES = new Set([
+  "UTC",
+  "Etc/UTC",
+  "Etc/GMT",
+  "GMT",
+  "Etc/UCT",
+  "UCT",
+  "Universal",
+])
+
 const PROVIDER_METADATA: Record<TtsProviderKind, TtsProviderMetadata> = {
   openAiCompatible: {
     kind: "openAiCompatible",
@@ -40,7 +96,7 @@ const PROVIDER_METADATA: Record<TtsProviderKind, TtsProviderMetadata> = {
   qwen: {
     kind: "qwen",
     defaultName: "Qwen",
-    defaultEndpoint: "",
+    defaultEndpoint: QWEN_CHINA_ENDPOINT,
     defaultModel: "",
     defaultFormat: "wav",
     forcesModelScopedVoices: true,
@@ -52,7 +108,7 @@ const PROVIDER_METADATA: Record<TtsProviderKind, TtsProviderMetadata> = {
   miniMax: {
     kind: "miniMax",
     defaultName: "MiniMax",
-    defaultEndpoint: "https://api.minimaxi.com",
+    defaultEndpoint: MINIMAX_CHINA_ENDPOINT,
     defaultModel: "speech-2.8-turbo",
     defaultFormat: "mp3",
     forcesModelScopedVoices: false,
@@ -172,4 +228,177 @@ export function mergeDiscoveredTtsVoices(
     voices: voices.length ? voices : [""],
     voiceNames,
   }
+}
+
+function localeRegionCode(tag: string | null | undefined): string | null {
+  const trimmed = tag?.trim()
+  if (!trimmed) return null
+  if (typeof Intl !== "undefined" && typeof Intl.Locale === "function") {
+    try {
+      const region = new Intl.Locale(trimmed).region
+      if (region) return region.toUpperCase()
+    } catch {
+      // Fall back to subtag parsing for non-canonical locale strings.
+    }
+  }
+  const parts = trimmed.split(/[-_]/).slice(1)
+  for (const part of parts) {
+    if (/^[A-Za-z]{2}$/.test(part)) return part.toUpperCase()
+  }
+  return null
+}
+
+export function detectRuntimeRegionContext(): TtsRegionContext {
+  let timeZone: string | undefined
+  let resolvedLocale: string | undefined
+  if (
+    typeof Intl !== "undefined" &&
+    typeof Intl.DateTimeFormat === "function"
+  ) {
+    try {
+      const resolved = Intl.DateTimeFormat().resolvedOptions()
+      timeZone = resolved.timeZone
+      resolvedLocale = resolved.locale
+    } catch {
+      // Ignore environments without Intl timezone metadata.
+    }
+  }
+  const locales: string[] = []
+  if (typeof navigator !== "undefined") {
+    if (Array.isArray(navigator.languages)) locales.push(...navigator.languages)
+    if (navigator.language) locales.push(navigator.language)
+  }
+  if (resolvedLocale) locales.push(resolvedLocale)
+  return { timeZone, locales }
+}
+
+export function isChinaMainlandRegion(
+  context: TtsRegionContext = detectRuntimeRegionContext(),
+): boolean {
+  const explicitRegion = context.regionCode?.trim()
+  if (explicitRegion) return explicitRegion.toUpperCase() === "CN"
+
+  const timeZone = context.timeZone?.trim()
+  if (timeZone && !GENERIC_UTC_TIMEZONES.has(timeZone)) {
+    return CHINA_MAINLAND_TIMEZONES.has(timeZone)
+  }
+
+  const candidates = [
+    ...(context.locale ? [context.locale] : []),
+    ...(context.locales ?? []),
+  ]
+  for (const tag of candidates) {
+    const region = localeRegionCode(tag)
+    if (region) return region === "CN"
+  }
+  return false
+}
+
+export function ttsDefaultEndpoint(
+  kind: string,
+  region?: TtsRegionContext | boolean,
+): string {
+  const isChina =
+    typeof region === "boolean" ? region : isChinaMainlandRegion(region)
+  if (kind === "qwen") {
+    return isChina ? QWEN_CHINA_ENDPOINT : QWEN_INTERNATIONAL_ENDPOINT
+  }
+  if (kind === "miniMax") {
+    return isChina ? MINIMAX_CHINA_ENDPOINT : MINIMAX_INTERNATIONAL_ENDPOINT
+  }
+  return ttsProviderMeta(kind).defaultEndpoint
+}
+
+export function ttsEndpointSuggestions(
+  kind: string,
+  region?: TtsRegionContext | boolean,
+): TtsEndpointSuggestion[] {
+  const isChina =
+    typeof region === "boolean" ? region : isChinaMainlandRegion(region)
+  if (kind === "qwen") {
+    const china: TtsEndpointSuggestion = {
+      url: QWEN_CHINA_ENDPOINT,
+      labelKey: "ttsProviders.endpoints.dashscopeChina",
+    }
+    const international: TtsEndpointSuggestion = {
+      url: QWEN_INTERNATIONAL_ENDPOINT,
+      labelKey: "ttsProviders.endpoints.dashscopeInternational",
+    }
+    return [
+      ...(isChina ? [china, international] : [international, china]),
+      {
+        url: QWEN_QIANWEN_ENDPOINT,
+        labelKey: "ttsProviders.endpoints.qianwen",
+      },
+      {
+        url: QWEN_TOKEN_PLAN_ENDPOINT,
+        labelKey: "ttsProviders.endpoints.qwenTokenPlan",
+      },
+    ]
+  }
+  if (kind === "miniMax") {
+    const china: TtsEndpointSuggestion = {
+      url: MINIMAX_CHINA_ENDPOINT,
+      labelKey: "ttsProviders.endpoints.china",
+    }
+    const international: TtsEndpointSuggestion = {
+      url: MINIMAX_INTERNATIONAL_ENDPOINT,
+      labelKey: "ttsProviders.endpoints.international",
+    }
+    return isChina ? [china, international] : [international, china]
+  }
+  const meta = ttsProviderMeta(kind)
+  if (!meta.defaultEndpoint) return []
+  return [
+    {
+      url: meta.defaultEndpoint,
+      labelKey:
+        meta.kind === "volcengine" ? "ttsProviders.volcengine" : undefined,
+      fallbackLabel: meta.defaultName,
+    },
+  ]
+}
+
+export function hasEffectiveTtsCredential(
+  draft: TtsCredentialDraftState,
+): boolean {
+  if (draft.credential?.trim()) return true
+  return Boolean(draft.hasCredential && !draft.clearCredential)
+}
+
+function errorDetailText(error: unknown): string {
+  if (typeof error === "string") return error
+  if (error && typeof error === "object") {
+    const parts: string[] = []
+    if ("message" in error && typeof error.message === "string")
+      parts.push(error.message)
+    if ("inner" in error && typeof error.inner === "object" && error.inner) {
+      const inner = error.inner as Record<string, unknown>
+      if (typeof inner.message === "string") parts.push(inner.message)
+    }
+    if (parts.length) return parts.join(" ")
+  }
+  return String(error ?? "")
+}
+
+export function isTtsCredentialRequiredError(
+  error: unknown,
+  draft?: TtsCredentialDraftState,
+  errorKind?: string,
+): boolean {
+  if (!error) return false
+  const detail = errorDetailText(error)
+  if (detail.includes("TTS_CREDENTIAL_REQUIRED")) return true
+  if (draft && !hasEffectiveTtsCredential(draft)) {
+    const normalizedKind = errorKind?.toLowerCase()
+    if (
+      normalizedKind === "credential" ||
+      normalizedKind === "auth" ||
+      normalizedKind === "unauthorized"
+    ) {
+      return true
+    }
+    if (/\b(unauthorized|http_401)\b/i.test(detail)) return true
+  }
+  return false
 }

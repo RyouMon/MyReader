@@ -1,9 +1,13 @@
 import {
+  detectRuntimeRegionContext,
   mergeDiscoveredTtsVoices,
+  ttsDefaultEndpoint,
   ttsProviderMeta,
   ttsUsesModelScopedVoices,
+  type TtsRegionContext,
 } from "@my-reader/tools/tts-providers"
 import { randomUUID } from "expo-crypto"
+import { getCalendars, getLocales } from "expo-localization"
 import type {
   MobileTtsModel,
   MobileTtsProvider,
@@ -19,6 +23,35 @@ export type TtsProviderDraft = MobileTtsProvider & {
 
 export const usesModelVoices = (draft: MobileTtsProvider) =>
   ttsUsesModelScopedVoices(draft)
+
+export function detectMobileTtsRegionContext(): TtsRegionContext {
+  const runtime = detectRuntimeRegionContext()
+  let regionCode: string | null | undefined
+  let locales: string[] = []
+  let timeZone: string | null | undefined = runtime.timeZone
+  try {
+    const deviceLocales = getLocales?.() ?? []
+    regionCode = deviceLocales.find((locale) => locale.regionCode)?.regionCode
+    locales = deviceLocales
+      .map((locale) => locale.languageTag || locale.languageCode || "")
+      .filter(Boolean)
+  } catch {
+    // Fall back to runtime Intl context when native localization is unavailable.
+  }
+  try {
+    const deviceTimeZone = getCalendars?.()?.find(
+      (calendar) => calendar.timeZone,
+    )?.timeZone
+    if (deviceTimeZone) timeZone = deviceTimeZone
+  } catch {
+    // Ignore when calendar timezone metadata is unavailable.
+  }
+  return {
+    regionCode,
+    timeZone,
+    locales: [...locales, ...(runtime.locales ?? [])],
+  }
+}
 
 export function newTtsModel(
   model = "",
@@ -40,6 +73,7 @@ export function newTtsModel(
 export function newTtsDraft(
   kind = "openAiCompatible",
   displayName?: string,
+  region?: TtsRegionContext | boolean,
 ): TtsProviderDraft {
   const meta = ttsProviderMeta(kind)
   const scoped = meta.forcesModelScopedVoices
@@ -47,7 +81,10 @@ export function newTtsDraft(
     id: "",
     kind: meta.kind,
     name: displayName ?? meta.defaultName,
-    endpoint: meta.defaultEndpoint,
+    endpoint: ttsDefaultEndpoint(
+      meta.kind,
+      region ?? detectMobileTtsRegionContext(),
+    ),
     modelScopedVoices: scoped,
     models: [
       {

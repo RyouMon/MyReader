@@ -7,6 +7,7 @@ import {
 
 import { useThemePalette } from "@/src/design/tokens"
 import { ScrollView, View } from "@/tw"
+import { useDismissSuggestions } from "./suggestions-overlay"
 
 export function Screen({
   children,
@@ -19,6 +20,7 @@ export function Screen({
   scrollEnabled?: boolean
 }) {
   const palette = useThemePalette()
+  const dismissSuggestions = useDismissSuggestions()
   const frame = useRef<NativeView>(null)
   const [keyboardOffset, setKeyboardOffset] = useState(0)
   const bottomPad = ["px-4 pt-4 pb-10", contentContainerClassName]
@@ -32,6 +34,7 @@ export function Screen({
       automaticallyAdjustKeyboardInsets
       keyboardDismissMode="on-drag"
       keyboardShouldPersistTaps="handled"
+      onScrollBeginDrag={dismissSuggestions}
       contentContainerClassName={bottomPad}
       scrollEnabled={scrollEnabled}
       style={{ backgroundColor: palette.background }}

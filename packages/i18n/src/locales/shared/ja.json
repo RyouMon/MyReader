@@ -25,6 +25,11 @@
     "automatic": "自動",
     "noNewModels": "利用可能なモデルは追加済みです",
     "addSelected": "選択したモデルを追加",
+    "selectModels": "利用可能なモデルを選択",
+    "searchModels": "モデルを検索",
+    "noMatchingModels": "一致するモデルがありません",
+    "modelAdded": "追加済み",
+    "selectedCount": "{{count}} 件選択中",
     "audioFormat": "音声形式",
     "voiceId": "音声 ID",
     "removeVoice": "音声を削除",
@@ -148,7 +153,17 @@
   },
   "ttsProviders": {
     "volcengine": "Volcengine (Doubao)",
-    "volcengineCredentialHint": "API キーまたは AppID:AccessKey"
+    "volcengineCredentialHint": "API キーまたは AppID:AccessKey",
+    "credentialRequired": "この操作には資格情報の入力が必要です。",
+    "endpointSuggestions": "おすすめのサービスアドレス",
+    "endpoints": {
+      "china": "中国本土",
+      "international": "グローバル",
+      "dashscopeChina": "DashScope（中国本土）",
+      "dashscopeInternational": "DashScope（グローバル）",
+      "qianwen": "Qianwen",
+      "qwenTokenPlan": "Qwen Token Plan"
+    }
   },
   "addLibraryFlow": {
     "title": "ライブラリを追加",

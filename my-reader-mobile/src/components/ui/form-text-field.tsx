@@ -73,6 +73,10 @@ export const FormTextField = forwardRef<
         selectionColor={palette.primary}
         cursorColor={palette.primary}
         maxFontSizeMultiplier={0}
+        // Paper unconditionally sets `textAlign`, which causes RN Fabric on iOS to attach
+        // an NSParagraphStyle defaulting to word-wrapping. On an unfocused single-line
+        // UITextField that breaks long URLs after `https://` and clips line 2.
+        lineBreakModeIOS={props.multiline ? undefined : "tail"}
         theme={{
           dark: colorScheme === "dark",
           roundness: 24,

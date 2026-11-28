@@ -1,11 +1,20 @@
 import {
   TTS_PROVIDER_KINDS,
+  ttsDefaultEndpoint,
+  ttsEndpointSuggestions,
   ttsProviderMeta,
 } from "@my-reader/tools/tts-providers"
 import { ttsUsageMessage } from "@my-reader/tools/tts-selection-usage"
 import { ttsVoiceLabel } from "@my-reader/tools/tts-voice-names"
 import { Loader2, Server, Volume2 } from "lucide-react"
-import { type CSSProperties, useCallback, useEffect, useState } from "react"
+import {
+  type CSSProperties,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react"
 import { useTranslation } from "react-i18next"
 import { AddPanelButton } from "@/components/common/AddPanelButton"
 import { AppRow } from "@/components/common/AppRow"
@@ -14,13 +23,14 @@ import {
   FlowDialogContent,
   FlowDialogHeader,
 } from "@/components/common/FlowDialog"
+import { FormPasswordField } from "@/components/common/FormPasswordField"
 import { FormScrollArea } from "@/components/common/FormScrollArea"
 import { FormSelect, FormSelectItem } from "@/components/common/FormSelect"
 import { FormSlider } from "@/components/common/FormSlider"
+import { FormSuggestionField } from "@/components/common/FormSuggestionField"
 import { FormSwitch } from "@/components/common/FormSwitch"
-import { FormPasswordField } from "@/components/common/FormPasswordField"
-import { useProviderCredential } from "@/hooks/useProviderCredential"
 import { FormTextField } from "@/components/common/FormTextField"
+import { useProviderCredential } from "@/hooks/useProviderCredential"
 import { GroupList, GroupListItem } from "@/components/common/GroupList"
 import { RowActions } from "@/components/common/RowActions"
 import { SaveButton } from "@/components/common/SaveButton"
@@ -641,6 +651,7 @@ function ProviderDialog({
 
 function ProfileEditor({
   draft,
+  themeStyle,
   error,
   saving,
   onChange,
@@ -656,10 +667,30 @@ function ProfileEditor({
   const { t } = useTranslation()
   const { fieldErrors, validationProps } = useFormValidation(draft)
   const [previewId, setPreviewId] = useState(draft.models[0]?.id ?? "")
+  const [credentialError, setCredentialError] = useState<string | null>(null)
+  const credentialInputRef = useRef<HTMLInputElement>(null)
   const previewModel =
     draft.models.find((model) => model.id === previewId) ?? draft.models[0]
   const update = (patch: Partial<ProfileDraft>) =>
     onChange({ ...draft, ...patch })
+  useEffect(() => {
+    setCredentialError(null)
+  }, [draft.id, draft.kind])
+  const endpointSuggestions = useMemo(
+    () =>
+      ttsEndpointSuggestions(draft.kind).map((item) => ({
+        value: item.url,
+        label: item.labelKey
+          ? t(item.labelKey)
+          : (item.fallbackLabel ?? item.url),
+      })),
+    [draft.kind, t],
+  )
+  const handleCredentialRequired = useCallback(() => {
+    setCredentialError(t("ttsProviders.credentialRequired"))
+    credentialInputRef.current?.scrollIntoView?.({ block: "nearest" })
+    credentialInputRef.current?.focus()
+  }, [t])
 
   return (
     <form
@@ -692,7 +723,7 @@ function ProfileEditor({
                 helperText={fieldErrors["tts-profile-name"]}
                 onChange={(event) => update({ name: event.target.value })}
               />
-              <FormTextField
+              <FormSuggestionField
                 id="tts-profile-endpoint"
                 label={t("settings.speech.endpoint")}
                 type="url"
@@ -701,16 +732,20 @@ function ProfileEditor({
                 fullWidth
                 error={Boolean(fieldErrors["tts-profile-endpoint"])}
                 helperText={fieldErrors["tts-profile-endpoint"]}
-                placeholder={
-                  ttsProviderMeta(draft.kind).defaultEndpoint || undefined
-                }
-                onChange={(event) => update({ endpoint: event.target.value })}
+                placeholder={ttsDefaultEndpoint(draft.kind) || undefined}
+                suggestions={endpointSuggestions}
+                suggestionsLabel={t("ttsProviders.endpointSuggestions")}
+                themeStyle={themeStyle}
+                onValueChange={(endpoint) => update({ endpoint })}
               />
             </FieldGroup>
 
             <FormPasswordField
               id="tts-profile-credential"
+              inputRef={credentialInputRef}
               label={t("settings.speech.credential")}
+              error={Boolean(credentialError)}
+              helperText={credentialError ?? undefined}
               placeholder={
                 draft.kind === "volcengine"
                   ? t("ttsProviders.volcengineCredentialHint")
@@ -721,18 +756,21 @@ function ProfileEditor({
               fullWidth
               autoComplete="new-password"
               value={draft.credential}
-              onChange={(event) =>
+              onChange={(event) => {
+                setCredentialError(null)
                 update({
                   credential: event.target.value,
                   clearCredential: !event.target.value.trim(),
                 })
-              }
+              }}
             />
           </FieldGroup>
           <TtsProviderModels
             draft={draft}
             previewModel={previewModel}
             fieldErrors={fieldErrors}
+            themeStyle={themeStyle}
+            onCredentialRequired={handleCredentialRequired}
             onChange={onChange}
           />
         </FieldGroup>

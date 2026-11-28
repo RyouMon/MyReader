@@ -25,6 +25,11 @@
     "automatic": "자동",
     "noNewModels": "사용 가능한 모델이 모두 추가되었습니다",
     "addSelected": "선택한 모델 추가",
+    "selectModels": "사용 가능한 모델 선택",
+    "searchModels": "모델 검색",
+    "noMatchingModels": "일치하는 모델이 없습니다",
+    "modelAdded": "추가됨",
+    "selectedCount": "{{count}}개 선택됨",
     "audioFormat": "오디오 형식",
     "voiceId": "음성 ID",
     "removeVoice": "음성 삭제",
@@ -148,7 +153,17 @@
   },
   "ttsProviders": {
     "volcengine": "Volcengine (Doubao)",
-    "volcengineCredentialHint": "API 키 또는 AppID:AccessKey"
+    "volcengineCredentialHint": "API 키 또는 AppID:AccessKey",
+    "credentialRequired": "이 작업을 수행하려면 자격 증명을 입력해야 합니다.",
+    "endpointSuggestions": "추천 서비스 주소",
+    "endpoints": {
+      "china": "중국",
+      "international": "글로벌",
+      "dashscopeChina": "DashScope (중국)",
+      "dashscopeInternational": "DashScope (글로벌)",
+      "qianwen": "Qianwen",
+      "qwenTokenPlan": "Qwen Token Plan"
+    }
   },
   "addLibraryFlow": {
     "title": "서재 추가",

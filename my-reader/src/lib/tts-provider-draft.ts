@@ -1,7 +1,9 @@
 import {
   mergeDiscoveredTtsVoices,
+  ttsDefaultEndpoint,
   ttsProviderMeta,
   ttsUsesModelScopedVoices,
+  type TtsRegionContext,
 } from "@my-reader/tools/tts-providers"
 import type {
   QwenTtsModelDto,
@@ -41,6 +43,7 @@ export function newTtsModel(
 export function newTtsProviderDraft(
   kind: TtsProviderKindDto = "openAiCompatible",
   displayName?: string,
+  region?: TtsRegionContext | boolean,
 ): TtsProviderDraft {
   const meta = ttsProviderMeta(kind)
   const scoped = meta.forcesModelScopedVoices
@@ -48,7 +51,7 @@ export function newTtsProviderDraft(
     id: "",
     name: displayName ?? meta.defaultName,
     kind,
-    endpoint: meta.defaultEndpoint,
+    endpoint: ttsDefaultEndpoint(kind, region),
     modelScopedVoices: scoped,
     models: [
       {

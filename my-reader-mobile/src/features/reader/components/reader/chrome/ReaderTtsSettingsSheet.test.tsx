@@ -54,8 +54,21 @@ jest.mock("./BookNarrationSettings", () => ({
 }))
 
 let mockPlaybackRate = 1
+const mockAudioListeners = new Set<(status: Record<string, unknown>) => void>()
 const mockAudioPlayer = {
+  addListener: jest.fn(
+    (event: string, listener: (status: Record<string, unknown>) => void) => {
+      if (event === "playbackStatusUpdate") mockAudioListeners.add(listener)
+      return { remove: () => mockAudioListeners.delete(listener) }
+    },
+  ),
+  pause: jest.fn(),
   play: jest.fn(() => mockPlaybackRate),
+  replace: jest.fn(() => {
+    for (const listener of mockAudioListeners) {
+      listener({ didJustFinish: false, error: null, isLoaded: true })
+    }
+  }),
   // Reject assignment like the native getter-only property, even outside strict mode.
   get playbackRate() {
     return mockPlaybackRate
@@ -112,12 +125,8 @@ jest.mock("@expo/vector-icons/MaterialIcons", () => jest.fn(() => null))
 jest.mock("expo-symbols", () => ({ SymbolView: jest.fn(() => null) }))
 
 jest.mock("expo-audio", () => ({
+  setAudioModeAsync: jest.fn().mockResolvedValue(undefined),
   useAudioPlayer: (source: string | null) => mockUseAudioPlayer(source),
-  useAudioPlayerStatus: () => ({
-    didJustFinish: false,
-    error: null,
-    isLoaded: true,
-  }),
 }))
 
 jest.mock("expo-speech", () => ({
@@ -356,7 +365,7 @@ describe("ReaderTtsSettingsSheet", () => {
       ),
     )
     await waitFor(() =>
-      expect(mockUseAudioPlayer).toHaveBeenLastCalledWith(
+      expect(mockAudioPlayer.replace).toHaveBeenLastCalledWith(
         "file:///tmp/reader-preview.mp3",
       ),
     )

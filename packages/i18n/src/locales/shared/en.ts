@@ -40,6 +40,11 @@ export const sharedEn = {
     automatic: "Automatic",
     noNewModels: "All available models have been added",
     addSelected: "Add selected models",
+    selectModels: "Select available models",
+    searchModels: "Search models",
+    noMatchingModels: "No matching models",
+    modelAdded: "Added",
+    selectedCount: "{{count}} selected",
     audioFormat: "Audio format",
     voiceId: "Voice ID",
     removeVoice: "Remove voice",
@@ -220,6 +225,16 @@ export const sharedEn = {
   ttsProviders: {
     volcengine: "Volcengine (Doubao)",
     volcengineCredentialHint: "API key or AppID:AccessKey",
+    credentialRequired: "This action requires a credential.",
+    endpointSuggestions: "Suggested service addresses",
+    endpoints: {
+      china: "China",
+      international: "International",
+      dashscopeChina: "DashScope (China)",
+      dashscopeInternational: "DashScope (International)",
+      qianwen: "Qianwen",
+      qwenTokenPlan: "Qwen Token Plan",
+    },
   },
   addLibraryFlow: {
     title: "Add library",

@@ -40,6 +40,11 @@ export const sharedZhCN = {
     automatic: "自动",
     noNewModels: "可用模型均已添加",
     addSelected: "添加所选模型",
+    selectModels: "选择可用模型",
+    searchModels: "搜索模型",
+    noMatchingModels: "没有匹配的模型",
+    modelAdded: "已添加",
+    selectedCount: "已选 {{count}} 项",
     audioFormat: "音频格式",
     voiceId: "声音 ID",
     removeVoice: "删除声音",
@@ -211,6 +216,16 @@ export const sharedZhCN = {
   ttsProviders: {
     volcengine: "火山引擎（豆包语音）",
     volcengineCredentialHint: "API Key 或 AppID:AccessKey",
+    credentialRequired: "该操作需要填写访问凭据。",
+    endpointSuggestions: "建议服务地址",
+    endpoints: {
+      china: "国内站",
+      international: "国际站",
+      dashscopeChina: "百炼（国内站）",
+      dashscopeInternational: "百炼（国际站）",
+      qianwen: "千问平台",
+      qwenTokenPlan: "千问 Token Plan",
+    },
   },
   addLibraryFlow: {
     title: "添加书库",

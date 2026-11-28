@@ -3,11 +3,26 @@ import { previewTtsProvider } from "@/src/services/core/tts"
 import { newTtsDraft, previewInput } from "./tts-provider-draft"
 import { useTtsVoicePreview } from "./use-tts-voice-preview"
 
-const mockPlayer = { play: jest.fn(), setPlaybackRate: jest.fn() }
-const mockStatus = { isLoaded: true, didJustFinish: false }
+const mockListeners = new Set<(status: Record<string, unknown>) => void>()
+const mockPlayer = {
+  addListener: jest.fn(
+    (event: string, listener: (status: Record<string, unknown>) => void) => {
+      if (event === "playbackStatusUpdate") mockListeners.add(listener)
+      return { remove: () => mockListeners.delete(listener) }
+    },
+  ),
+  pause: jest.fn(),
+  play: jest.fn(),
+  replace: jest.fn(() => {
+    for (const listener of mockListeners) {
+      listener({ isLoaded: true, didJustFinish: false })
+    }
+  }),
+  setPlaybackRate: jest.fn(),
+}
 jest.mock("expo-audio", () => ({
+  setAudioModeAsync: jest.fn().mockResolvedValue(undefined),
   useAudioPlayer: () => mockPlayer,
-  useAudioPlayerStatus: () => mockStatus,
 }))
 jest.mock("@/src/services/core/tts", () => ({ previewTtsProvider: jest.fn() }))
 jest.mock("@/src/i18n/error-message", () => ({
