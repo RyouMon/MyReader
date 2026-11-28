@@ -680,9 +680,9 @@ mod tests {
     }
 
     async fn seed_catalog(root: &Path) {
-        let db = Database::connect(format!(
-            "sqlite://{}?mode=rwc",
-            root.join("metadata.db").display()
+        let db = Database::connect(crate::database::sqlite_file_url(
+            &root.join("metadata.db"),
+            "rwc",
         ))
         .await
         .unwrap();

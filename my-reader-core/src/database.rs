@@ -80,7 +80,7 @@ pub async fn open_database_file(path: &Path) -> Result<DatabaseConnection, CoreE
         "Start to open library database. path: \"{}\"",
         path.display()
     );
-    let url = format!("sqlite://{}?mode=rwc", path.display());
+    let url = sqlite_file_url(&path, "rwc");
     let db = Database::connect(&url).await?;
     migrate_database(&db).await?;
     stores.insert(
@@ -95,6 +95,14 @@ pub async fn open_database_file(path: &Path) -> Result<DatabaseConnection, CoreE
         path.display()
     );
     Ok(db)
+}
+
+/// Formats a SQLite file connection string with forward slashes so `url >= 2.5.9`
+/// accepts Windows drive-letter paths (e.g. `C:\...`) without treating `\` as an invalid port.
+pub fn sqlite_file_url(path: &Path, mode: &str) -> String {
+    let normalized = path.to_string_lossy().replace('\\', "/");
+    let normalized = normalized.strip_prefix("//?/").unwrap_or(&normalized);
+    format!("sqlite://{normalized}?mode={mode}")
 }
 
 fn absolute_path(path: &Path) -> Result<PathBuf, CoreError> {
@@ -638,5 +646,28 @@ mod tests {
             .try_get::<i64>("", "count")
             .unwrap();
         assert_eq!(drizzle_table_count, 0);
+    }
+
+    #[test]
+    fn sqlite_file_url_normalizes_windows_paths_for_url_parser() {
+        let windows_url = super::sqlite_file_url(
+            std::path::Path::new(r"C:\Users\RUNNER~1\AppData\Local\Temp\.myreader\myreader.db"),
+            "rwc",
+        );
+        assert_eq!(
+            windows_url,
+            "sqlite://C:/Users/RUNNER~1/AppData/Local/Temp/.myreader/myreader.db?mode=rwc"
+        );
+        assert!(url::Url::parse(&windows_url).is_ok());
+
+        let extended_url =
+            super::sqlite_file_url(std::path::Path::new(r"\\?\D:\Books\metadata.db"), "ro");
+        assert_eq!(extended_url, "sqlite://D:/Books/metadata.db?mode=ro");
+        assert!(url::Url::parse(&extended_url).is_ok());
+
+        let unix_url =
+            super::sqlite_file_url(std::path::Path::new("/tmp/library/metadata.db"), "ro");
+        assert_eq!(unix_url, "sqlite:///tmp/library/metadata.db?mode=ro");
+        assert!(url::Url::parse(&unix_url).is_ok());
     }
 }

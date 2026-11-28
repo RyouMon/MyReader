@@ -125,12 +125,10 @@ impl CatalogRepository {
     }
 
     async fn open_calibre_file(db_path: &Path) -> Result<Self, CoreError> {
-        let url = format!(
-            "sqlite://{}?mode=ro",
-            db_path
-                .to_str()
-                .ok_or_else(|| CoreError::Config("LIBRARY_PATH_INVALID_UTF8".into()))?
-        );
+        let _ = db_path
+            .to_str()
+            .ok_or_else(|| CoreError::Config("LIBRARY_PATH_INVALID_UTF8".into()))?;
+        let url = crate::database::sqlite_file_url(db_path, "ro");
         let db = Database::connect(&url)
             .await
             .map_err(|e| CoreError::Database(e.to_string()))?;
@@ -1144,12 +1142,9 @@ mod tests {
     async fn should_keep_external_calibre_database_read_only() {
         let library = tempfile::tempdir().expect("create library");
         let database_path = library.path().join("metadata.db");
-        let database = Database::connect(format!(
-            "sqlite://{}?mode=rwc",
-            database_path.to_string_lossy()
-        ))
-        .await
-        .expect("open fixture database");
+        let database = Database::connect(crate::database::sqlite_file_url(&database_path, "rwc"))
+            .await
+            .expect("open fixture database");
         database
             .execute_unprepared("CREATE TABLE fixture (id INTEGER PRIMARY KEY);")
             .await

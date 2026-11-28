@@ -22,10 +22,7 @@ pub struct SeededBook {
 /// Create an empty Calibre `metadata.db` using the real SeaORM entity definitions.
 pub async fn create_calibre_db(root: &Path) -> DatabaseConnection {
     let db_path = root.join("metadata.db");
-    let url = format!(
-        "sqlite://{}?mode=rwc",
-        db_path.to_str().expect("valid utf8")
-    );
+    let url = my_reader_core::test_support::sqlite_file_url(&db_path, "rwc");
     let db = Database::connect(&url).await.expect("connect to setup db");
 
     let builder = db.get_database_backend();

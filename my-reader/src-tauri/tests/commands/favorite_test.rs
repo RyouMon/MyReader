@@ -26,9 +26,9 @@ fn library_fixture(id: &str, path: &str) -> LibraryConfig {
 }
 
 async fn create_calibre_metadata(root: &std::path::Path) {
-    let db = Database::connect(format!(
-        "sqlite://{}?mode=rwc",
-        root.join("metadata.db").display()
+    let db = Database::connect(my_reader_core::test_support::sqlite_file_url(
+        &root.join("metadata.db"),
+        "rwc",
     ))
     .await
     .unwrap();
