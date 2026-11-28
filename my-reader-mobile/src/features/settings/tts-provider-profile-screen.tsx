@@ -42,6 +42,9 @@ import { View } from "@/tw"
 import { ProviderConnectionFields } from "./provider-connection-fields"
 import { ttsFormErrors } from "./provider-validation"
 import { TtsProviderModels } from "./tts-provider-models"
+import type { TtsDraftUpdater } from "./tts-voices-editor"
+
+const EMPTY_ERRORS: Record<string, string> = {}
 
 function providerKindLabel(kind: string, t: import("i18next").TFunction) {
   if (kind === "openAiCompatible")
@@ -52,11 +55,11 @@ function providerKindLabel(kind: string, t: import("i18next").TFunction) {
 
 function ProviderForm({
   draft,
-  onChange,
+  onUpdateDraft,
   validation,
 }: {
   draft: TtsProviderDraft
-  onChange: (value: TtsProviderDraft) => void
+  onUpdateDraft: TtsDraftUpdater
   validation: ReturnType<typeof useFormValidation>
 }) {
   const { t } = useTranslation()
@@ -82,39 +85,45 @@ function ProviderForm({
       : draft.kind === "openAiCompatible"
         ? t("settings.tts.credentialPlaceholder")
         : undefined
+  const handleConnectionChange = useCallback(
+    (connection: { name: string; endpoint: string; credential: string }) => {
+      if (connection.credential !== draft.credential) {
+        setCredentialError(null)
+      }
+      onUpdateDraft((prev) => ({
+        ...prev,
+        ...connection,
+        clearCredential: !connection.credential.trim(),
+      }))
+    },
+    [draft.credential, onUpdateDraft],
+  )
+  const handleCredentialRequired = useCallback(() => {
+    setCredentialError(t("ttsProviders.credentialRequired"))
+  }, [t])
+
+  const connectionHeader = (
+    <ProviderConnectionFields
+      kind="tts"
+      value={draft}
+      credentialPlaceholder={credentialPlaceholder}
+      credentialError={credentialError ?? undefined}
+      endpointSuggestions={endpointSuggestions}
+      endpointSuggestionsLabel={t("ttsProviders.endpointSuggestions")}
+      validation={validation}
+      onChange={handleConnectionChange}
+    />
+  )
+
   return (
     <SuggestionsOverlayHost testID="tts-suggestions-host">
-      <Screen>
-        <View className="gap-3">
-          <ProviderConnectionFields
-            kind="tts"
-            value={draft}
-            credentialPlaceholder={credentialPlaceholder}
-            credentialError={credentialError ?? undefined}
-            endpointSuggestions={endpointSuggestions}
-            endpointSuggestionsLabel={t("ttsProviders.endpointSuggestions")}
-            validation={validation}
-            onChange={(connection) => {
-              if (connection.credential !== draft.credential) {
-                setCredentialError(null)
-              }
-              onChange({
-                ...draft,
-                ...connection,
-                clearCredential: !connection.credential.trim(),
-              })
-            }}
-          />
-          <TtsProviderModels
-            draft={draft}
-            onChange={onChange}
-            onCredentialRequired={() =>
-              setCredentialError(t("ttsProviders.credentialRequired"))
-            }
-            validation={validation}
-          />
-        </View>
-      </Screen>
+      <TtsProviderModels
+        header={connectionHeader}
+        draft={draft}
+        onUpdateDraft={onUpdateDraft}
+        onCredentialRequired={handleCredentialRequired}
+        validation={validation}
+      />
     </SuggestionsOverlayHost>
   )
 }
@@ -163,7 +172,14 @@ export default function TtsProviderProfileScreen() {
   const [saving, setSaving] = useState(false)
   const [removing, setRemoving] = useState(false)
   const confirmRemoval = useTtsRemovalConfirmation()
-  const validation = useFormValidation(draft ? ttsFormErrors(draft, t) : {})
+  const formErrors = useMemo(
+    () => (draft ? ttsFormErrors(draft, t) : EMPTY_ERRORS),
+    [draft, t],
+  )
+  const validation = useFormValidation(formErrors)
+  const updateDraft = useCallback<TtsDraftUpdater>((updater) => {
+    setDraft((prev) => (prev ? updater(prev) : prev))
+  }, [])
   useEffect(() => {
     if (!providerId) return
     let active = true
@@ -258,7 +274,7 @@ export default function TtsProviderProfileScreen() {
       ) : draft ? (
         <ProviderForm
           draft={draft}
-          onChange={setDraft}
+          onUpdateDraft={updateDraft}
           validation={validation}
         />
       ) : null}

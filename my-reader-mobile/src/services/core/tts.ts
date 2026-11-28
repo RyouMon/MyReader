@@ -73,15 +73,23 @@ const ttsCachePath = toNativeFilesystemPath(
 )
 
 async function hydrateConfig(config: TtsConfig): Promise<MobileTtsConfig> {
+  const credentialPresence = new Map<string, Promise<boolean>>()
+  const hasCredentialFor = (reference?: string) => {
+    if (!reference) return Promise.resolve(false)
+    const cached = credentialPresence.get(reference)
+    if (cached) return cached
+    const pending = readTtsCredential(reference).then(Boolean)
+    credentialPresence.set(reference, pending)
+    return pending
+  }
+
   const profiles = await Promise.all(
     config.profiles.map(async (profile) => ({
       ...profile,
       voiceNames: profile.voiceNames
         ? Object.fromEntries(profile.voiceNames)
         : undefined,
-      hasCredential: profile.credentialReference
-        ? Boolean(await readTtsCredential(profile.credentialReference))
-        : false,
+      hasCredential: await hasCredentialFor(profile.credentialReference),
     })),
   )
   const providers = await Promise.all(
@@ -96,9 +104,7 @@ async function hydrateConfig(config: TtsConfig): Promise<MobileTtsConfig> {
           ? Object.fromEntries(model.voiceNames)
           : undefined,
       })),
-      hasCredential: provider.credentialReference
-        ? Boolean(await readTtsCredential(provider.credentialReference))
-        : false,
+      hasCredential: await hasCredentialFor(provider.credentialReference),
     })),
   )
   return { ...config, profiles, providers }

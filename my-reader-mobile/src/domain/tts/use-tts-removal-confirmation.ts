@@ -1,4 +1,10 @@
-import { createContext, useContext, useEffect, useRef } from "react"
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+} from "react"
 import { useTranslation } from "react-i18next"
 import {
   ttsModelVoices,
@@ -32,49 +38,52 @@ export function useTtsRemovalConfirmation() {
       dismiss.current?.(false)
     }
   }, [])
-  return async (provider: TtsVoiceCatalog, name?: string) => {
-    if (!provider.id) return true
-    if (pending.current) return false
-    pending.current = true
-    try {
-      const usages = await getTtsChangeUsage(
-        provider.id,
-        ttsModelVoices(provider),
-      )
-      if (!active.current) return false
-      const signature = JSON.stringify(usages)
-      if (!usages.length || signature === accepted.current) return true
-      const confirmed = await new Promise<boolean>((resolve) => {
-        dismiss.current = resolve
-        showAlertWithStatusBarRestore(
-          name
-            ? t("rowActions.confirmDelete", { name })
-            : t("ttsRemoval.confirm"),
-          ttsUsageMessage(usages, t),
-          [
-            {
-              text: t("common.cancel"),
-              style: "cancel",
-              onPress: () => resolve(false),
-            },
-            {
-              text: t("common.confirm"),
-              style: "destructive",
-              onPress: () => resolve(true),
-            },
-          ],
-          { cancelable: true, onDismiss: () => resolve(false) },
+  return useCallback(
+    async (provider: TtsVoiceCatalog, name?: string) => {
+      if (!provider.id) return true
+      if (pending.current) return false
+      pending.current = true
+      try {
+        const usages = await getTtsChangeUsage(
+          provider.id,
+          ttsModelVoices(provider),
         )
-      })
-      if (confirmed) accepted.current = signature
-      return confirmed && active.current
-    } catch (error) {
-      if (active.current)
-        showErrorAlert(t("settings.tts.saveFailed"), errorMessage(error))
-      return false
-    } finally {
-      pending.current = false
-      dismiss.current = undefined
-    }
-  }
+        if (!active.current) return false
+        const signature = JSON.stringify(usages)
+        if (!usages.length || signature === accepted.current) return true
+        const confirmed = await new Promise<boolean>((resolve) => {
+          dismiss.current = resolve
+          showAlertWithStatusBarRestore(
+            name
+              ? t("rowActions.confirmDelete", { name })
+              : t("ttsRemoval.confirm"),
+            ttsUsageMessage(usages, t),
+            [
+              {
+                text: t("common.cancel"),
+                style: "cancel",
+                onPress: () => resolve(false),
+              },
+              {
+                text: t("common.confirm"),
+                style: "destructive",
+                onPress: () => resolve(true),
+              },
+            ],
+            { cancelable: true, onDismiss: () => resolve(false) },
+          )
+        })
+        if (confirmed) accepted.current = signature
+        return confirmed && active.current
+      } catch (error) {
+        if (active.current)
+          showErrorAlert(t("settings.tts.saveFailed"), errorMessage(error))
+        return false
+      } finally {
+        pending.current = false
+        dismiss.current = undefined
+      }
+    },
+    [t],
+  )
 }

@@ -183,7 +183,9 @@ jest.mock("@/src/components", () => {
   }
 })
 const clients: QueryClient[] = []
-function mount(params = { kind: "openAiCompatible" }) {
+function mount(
+  params: { kind?: string; providerId?: string } = { kind: "openAiCompatible" },
+) {
   mockParams = params
   const client = new QueryClient({
     defaultOptions: { mutations: { retry: false, gcTime: Infinity } },
@@ -699,4 +701,86 @@ it("shows inline credential field errors instead of generic errors when discover
   )
   await screen.findByText("ttsProviders.credentialRequired")
   expect(screen.queryByText(/TTS_CREDENTIAL_REQUIRED/)).toBeNull()
+})
+
+it("virtualizes large shared and model-scoped voice catalogs on initial mount without losing voices on save", async () => {
+  const voiceIds = Array.from({ length: 150 }, (_, i) => `voice-${i}`)
+  const voiceNames = Object.fromEntries(
+    voiceIds.map((id, i) => [id, `Voice ${i}`]),
+  )
+
+  jest.mocked(tts.getTtsConfig).mockResolvedValueOnce({
+    providers: [
+      {
+        id: "mm-large",
+        name: "MiniMax",
+        kind: "miniMax",
+        endpoint: "https://api.minimaxi.com",
+        hasCredential: true,
+        modelScopedVoices: false,
+        voices: voiceIds,
+        voiceNames,
+        models: [
+          {
+            id: "m-1",
+            model: "speech-2.8-hd",
+            responseFormat: "mp3",
+            voices: [],
+          },
+        ],
+      },
+    ],
+  } as never)
+
+  const shared = mount({ providerId: "mm-large" })
+  await screen.findByTestId("tts-voice-id-0")
+  expect(screen.getByTestId("tts-provider-form-list")).toBeTruthy()
+  const mountedSharedInputs = screen.getAllByLabelText("providerEditor.voiceId")
+  expect(mountedSharedInputs.length).toBeGreaterThan(0)
+  expect(mountedSharedInputs.length).toBeLessThan(20)
+  expect(screen.queryByTestId("tts-voice-id-149")).toBeNull()
+
+  fireEvent.changeText(screen.getByTestId("tts-voice-id-0"), "voice-0-edited")
+  save()
+  await waitFor(() => expect(tts.saveTtsProvider).toHaveBeenCalledTimes(1))
+  const savedShared = jest.mocked(tts.saveTtsProvider).mock.calls[0]![0]
+  expect(savedShared.provider.voices).toHaveLength(150)
+  expect(savedShared.provider.voices[0]).toBe("voice-0-edited")
+  expect(savedShared.provider.voices[149]).toBe("voice-149")
+  shared.unmount()
+
+  jest.mocked(tts.getTtsConfig).mockResolvedValueOnce({
+    providers: [
+      {
+        id: "volc-large",
+        name: "Volcengine",
+        kind: "volcengine",
+        endpoint: "https://openspeech.bytedance.com/api/v3/tts/unidirectional",
+        hasCredential: true,
+        modelScopedVoices: true,
+        voices: [],
+        models: [
+          {
+            id: "vm-1",
+            model: "seed-tts-2.0",
+            responseFormat: "mp3",
+            voices: voiceIds,
+            voiceNames,
+          },
+        ],
+      },
+    ],
+  } as never)
+
+  mount({ providerId: "volc-large" })
+  await screen.findByTestId("tts-voice-id-0")
+  const mountedScopedInputs = screen.getAllByLabelText("providerEditor.voiceId")
+  expect(mountedScopedInputs.length).toBeGreaterThan(0)
+  expect(mountedScopedInputs.length).toBeLessThan(20)
+  expect(screen.queryByTestId("tts-voice-id-149")).toBeNull()
+
+  save()
+  await waitFor(() => expect(tts.saveTtsProvider).toHaveBeenCalledTimes(2))
+  const savedScoped = jest.mocked(tts.saveTtsProvider).mock.calls[1]![0]
+  expect(savedScoped.provider.models[0]?.voices).toHaveLength(150)
 })
