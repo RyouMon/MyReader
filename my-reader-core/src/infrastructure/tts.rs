@@ -1,21 +1,16 @@
 use crate::TtsErrorKind;
 use std::time::Duration;
 
-use reqwest::{
-    header::{ACCEPT, AUTHORIZATION, CONTENT_TYPE},
-    Client, Response, StatusCode,
-};
-use serde_json::json;
-use url::Url;
+use reqwest::{Client, Response, StatusCode};
 
 use crate::{
     models::{
-        TtsAudioFormat, TtsProviderCapabilities, TtsProviderKind, TtsProviderOptions,
-        TtsProviderProfile, TtsSynthesisRequest, TtsVoice,
+        TtsAudioFormat, TtsProviderCapabilities, TtsProviderProfile, TtsSynthesisRequest, TtsVoice,
     },
     CoreError,
 };
 
+pub(crate) mod providers;
 pub(crate) mod qwen;
 
 const MAX_AUDIO_BYTES: u64 = 32 * 1024 * 1024;
@@ -37,49 +32,19 @@ pub(crate) async fn probe(
 }
 
 pub(crate) fn capabilities(profile: &TtsProviderProfile) -> TtsProviderCapabilities {
-    match profile.kind {
-        TtsProviderKind::OpenAiCompatible => TtsProviderCapabilities {
-            voice_discovery: false,
-            preview: true,
-            plain_text: true,
-            ssml: false,
-            streaming: false,
-            word_timings: false,
-            synthesis_rate: true,
-            synthesis_pitch: false,
-            max_input_chars: Some(4096),
-            output_mime_types: vec![
-                "audio/mpeg".into(),
-                "audio/ogg".into(),
-                "audio/aac".into(),
-                "audio/flac".into(),
-                "audio/wav".into(),
-            ],
-        },
-        TtsProviderKind::Qwen => {
-            let audio = qwen::is_audio_model(profile.model.as_deref().unwrap_or_default());
-            TtsProviderCapabilities {
-                voice_discovery: qwen::model(
-                    profile.model.as_deref().unwrap_or_default(),
-                    &profile.endpoint,
-                )
-                .is_ok_and(|model| model.voice_discovery),
-                preview: true,
-                plain_text: true,
-                ssml: false,
-                streaming: false,
-                word_timings: false,
-                synthesis_rate: audio,
-                synthesis_pitch: audio,
-                max_input_chars: if audio { None } else { Some(600) },
-                output_mime_types: if audio {
-                    vec!["audio/mpeg".into(), "audio/wav".into(), "audio/ogg".into()]
-                } else {
-                    vec!["audio/wav".into()]
-                },
-            }
-        }
-    }
+    providers::capabilities(profile)
+}
+
+pub(crate) fn synthesis_rate_range(profile: &TtsProviderProfile) -> Option<(f64, f64)> {
+    providers::synthesis_rate_range(profile)
+}
+
+pub(crate) fn validate_profile(profile: &TtsProviderProfile) -> Result<(), CoreError> {
+    providers::validate_profile(profile)
+}
+
+pub(crate) fn normalize_profile_options(profile: &mut TtsProviderProfile) -> Result<(), CoreError> {
+    providers::normalize_profile_options(profile)
 }
 
 pub(crate) async fn list_voices(
@@ -97,99 +62,24 @@ pub(crate) async fn synthesize(
     request: &TtsSynthesisRequest,
     credential: Option<&str>,
 ) -> Result<SynthesizedAudio, CoreError> {
-    match profile.kind {
-        TtsProviderKind::OpenAiCompatible => synthesize_openai(profile, request, credential).await,
-        TtsProviderKind::Qwen => qwen::synthesize(profile, request, credential).await,
-    }
+    providers::synthesize(profile, request, credential).await
 }
 
 pub(crate) async fn discover_models(
     profile: &TtsProviderProfile,
     credential: Option<&str>,
 ) -> Result<Vec<String>, CoreError> {
-    if profile.kind == TtsProviderKind::Qwen {
-        return Ok(qwen::discover_models(&profile.endpoint, credential)
-            .await?
-            .into_iter()
-            .map(|m| m.id)
-            .collect());
-    }
-    let mut url = openai_speech_endpoint(profile)?;
-    let path = url.path().trim_end_matches("/audio/speech");
-    url.set_path(&format!("{path}/models"));
-    let mut request = client(REQUEST_TIMEOUT)?.get(url);
-    if let Some(credential) = credential.filter(|v| !v.trim().is_empty()) {
-        request = request.bearer_auth(credential);
-    }
-    let response = successful(request.send().await.map_err(map_reqwest_error)?, credential).await?;
-    let bytes = response_bytes(response, "TTS_MODEL_LIST_TOO_LARGE").await?;
-    let body: serde_json::Value = serde_json::from_slice(&bytes)
-        .map_err(|_| tts_error(TtsErrorKind::InvalidResponse, "TTS_INVALID_MODEL_LIST"))?;
-    let entries = body["data"]
-        .as_array()
-        .ok_or_else(|| tts_error(TtsErrorKind::InvalidResponse, "TTS_INVALID_MODEL_LIST"))?;
-    let mut ids: Vec<String> = entries
-        .iter()
-        .filter_map(|entry| entry["id"].as_str())
-        .filter(|id| !id.trim().is_empty())
-        .map(str::to_owned)
-        .collect();
-    ids.sort();
-    ids.dedup();
-    Ok(ids)
+    providers::discover_models(profile, credential).await
 }
 
-async fn synthesize_openai(
+pub(crate) async fn discover_voices(
     profile: &TtsProviderProfile,
-    request: &TtsSynthesisRequest,
     credential: Option<&str>,
-) -> Result<SynthesizedAudio, CoreError> {
-    let TtsProviderOptions::OpenAiCompatible {
-        response_format,
-        instructions,
-        ..
-    } = &profile.options
-    else {
-        return Err(tts_error(
-            TtsErrorKind::Configuration,
-            "TTS_PROVIDER_OPTIONS_MISMATCH",
-        ));
-    };
-    let credential = credential
-        .filter(|value| !value.trim().is_empty())
-        .ok_or_else(|| tts_error(TtsErrorKind::Unauthorized, "TTS_CREDENTIAL_REQUIRED"))?;
-    let model = profile.model.as_deref().unwrap_or("gpt-4o-mini-tts");
-    let mut body = json!({
-        "model": model,
-        "voice": request.voice_id,
-        "input": request.text,
-        "response_format": response_format.as_str(),
-    });
-    if let Some(speed) = request.speed {
-        body["speed"] = json!(speed);
-    }
-    if let Some(instructions) = request
-        .instructions
-        .as_deref()
-        .or(instructions.as_deref())
-        .filter(|value| !value.is_empty())
-    {
-        body["instructions"] = json!(instructions);
-    }
-
-    let response = client(SYNTHESIS_TIMEOUT)?
-        .post(openai_speech_endpoint(profile)?)
-        .header(AUTHORIZATION, format!("Bearer {credential}"))
-        .header(CONTENT_TYPE, "application/json")
-        .header(ACCEPT, response_format.mime_type())
-        .body(serde_json::to_vec(&body)?)
-        .send()
-        .await
-        .map_err(map_reqwest_error)?;
-    audio_response(response, Some(*response_format), Some(credential)).await
+) -> Result<Vec<TtsVoice>, CoreError> {
+    providers::discover_voices(profile, credential).await
 }
 
-async fn audio_response(
+pub(crate) async fn audio_response(
     response: Response,
     expected_format: Option<TtsAudioFormat>,
     credential: Option<&str>,
@@ -199,7 +89,7 @@ async fn audio_response(
     audio_from_bytes(bytes, expected_format)
 }
 
-fn audio_from_bytes(
+pub(crate) fn audio_from_bytes(
     bytes: Vec<u8>,
     expected_format: Option<TtsAudioFormat>,
 ) -> Result<SynthesizedAudio, CoreError> {
@@ -219,7 +109,7 @@ fn audio_from_bytes(
     })
 }
 
-async fn response_bytes(
+pub(crate) async fn response_bytes(
     mut response: Response,
     too_large_code: &str,
 ) -> Result<Vec<u8>, CoreError> {
@@ -244,7 +134,10 @@ async fn response_bytes(
     Ok(bytes)
 }
 
-async fn successful(response: Response, credential: Option<&str>) -> Result<Response, CoreError> {
+pub(crate) async fn successful(
+    response: Response,
+    credential: Option<&str>,
+) -> Result<Response, CoreError> {
     let status = response.status();
     if status.is_success() {
         return Ok(response);
@@ -254,6 +147,7 @@ async fn successful(response: Response, credential: Option<&str>) -> Result<Resp
         .headers()
         .get("x-request-id")
         .or_else(|| response.headers().get("x-dashscope-request-id"))
+        .or_else(|| response.headers().get("x-tt-logid"))
         .and_then(|value| value.to_str().ok())
         .unwrap_or_default()
         .to_owned();
@@ -287,7 +181,7 @@ fn redact_credential(message: &str, credential: Option<&str>) -> String {
     }
 }
 
-fn client(timeout: Duration) -> Result<Client, CoreError> {
+pub(crate) fn client(timeout: Duration) -> Result<Client, CoreError> {
     super::http::client_builder()
         .connect_timeout(CONNECT_TIMEOUT)
         .timeout(timeout)
@@ -297,24 +191,6 @@ fn client(timeout: Duration) -> Result<Client, CoreError> {
         .map_err(map_reqwest_error)
 }
 
-fn openai_speech_endpoint(profile: &TtsProviderProfile) -> Result<Url, CoreError> {
-    let mut url = Url::parse(&profile.endpoint)
-        .map_err(|_| tts_error(TtsErrorKind::Configuration, "INVALID_TTS_ENDPOINT"))?;
-    let path = url.path().trim_end_matches('/');
-    if path.ends_with("/audio/speech") {
-        return Ok(url);
-    }
-    let next_path = if path.ends_with("/v1") {
-        format!("{path}/audio/speech")
-    } else if path.is_empty() {
-        "/v1/audio/speech".into()
-    } else {
-        format!("{path}/v1/audio/speech")
-    };
-    url.set_path(&next_path);
-    Ok(url)
-}
-
 fn configured_voices(profile: &TtsProviderProfile) -> Vec<TtsVoice> {
     profile
         .options
@@ -322,6 +198,7 @@ fn configured_voices(profile: &TtsProviderProfile) -> Vec<TtsVoice> {
         .iter()
         .map(|id| TtsVoice {
             id: id.clone(),
+            name: profile.voice_names.get(id).cloned(),
             language: "mul".into(),
             gender: None,
         })
@@ -353,7 +230,7 @@ pub(crate) fn sniff_audio(bytes: &[u8]) -> Option<(&'static str, &'static str)> 
     }
 }
 
-fn map_reqwest_error(error: reqwest::Error) -> CoreError {
+pub(crate) fn map_reqwest_error(error: reqwest::Error) -> CoreError {
     if error.is_timeout() {
         tts_error(TtsErrorKind::Timeout, "TTS_REQUEST_TIMEOUT")
     } else if error.is_connect() {
@@ -363,7 +240,7 @@ fn map_reqwest_error(error: reqwest::Error) -> CoreError {
     }
 }
 
-fn tts_error(kind: TtsErrorKind, code: &str) -> CoreError {
+pub(crate) fn tts_error(kind: TtsErrorKind, code: &str) -> CoreError {
     CoreError::Tts {
         kind,
         message: code.to_owned(),

@@ -1,3 +1,5 @@
+import { ttsUsesModelScopedVoices } from "./tts-providers"
+
 export type TtsSelectionUsage = {
   profileId: string
   voiceId?: string | null
@@ -19,10 +21,7 @@ export type TtsVoiceCatalog = {
 export function ttsModelVoices(provider: TtsVoiceCatalog) {
   return provider.models.map((model) => ({
     id: model.id,
-    voices:
-      provider.kind === "qwen" || provider.modelScopedVoices
-        ? model.voices
-        : provider.voices,
+    voices: ttsUsesModelScopedVoices(provider) ? model.voices : provider.voices,
   }))
 }
 

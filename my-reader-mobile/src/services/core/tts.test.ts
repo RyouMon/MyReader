@@ -2,6 +2,7 @@ import {
   ttsGetConfig,
   ttsSaveProvider,
   ttsDiscoverQwenVoices,
+  ttsDiscoverVoices,
   ttsQwenModels,
   ttsRemoveProfile,
   ttsSynthesize,
@@ -17,6 +18,7 @@ import {
 import {
   getTtsConfig,
   discoverQwenTtsVoices,
+  discoverTtsVoices,
   getQwenTtsModels,
   removeTtsProfile,
   synthesizeTts,
@@ -57,6 +59,7 @@ jest.mock("my-reader-core", () => ({
   librarySwitch: jest.fn(),
   ttsGetConfig: jest.fn(),
   ttsDiscoverQwenVoices: jest.fn(),
+  ttsDiscoverVoices: jest.fn(),
   ttsQwenModels: jest.fn(),
   ttsListVoices: jest.fn(),
   ttsProbeProvider: jest.fn(),
@@ -519,6 +522,47 @@ describe("mobile core TTS", () => {
     expect(ttsSynthesize).not.toHaveBeenCalled()
   })
 
+  it("discovers provider voices via Core using draft or stored credentials", async () => {
+    const controller = new AbortController()
+    jest.mocked(ttsDiscoverVoices).mockResolvedValue([
+      {
+        id: "male-qn-qingse",
+        name: "青涩青年音色",
+        language: "mul",
+      },
+    ])
+    await expect(
+      discoverTtsVoices(
+        {
+          profile: {
+            name: "MiniMax",
+            kind: "miniMax",
+            endpoint: "https://api.minimaxi.com",
+            model: "speech-2.8-turbo",
+            responseFormat: "mp3",
+            voices: [],
+          },
+          credential: " minimax-key ",
+        },
+        controller.signal,
+      ),
+    ).resolves.toEqual([
+      {
+        id: "male-qn-qingse",
+        name: "青涩青年音色",
+        language: "mul",
+      },
+    ])
+    expect(ttsDiscoverVoices).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "miniMax",
+        endpoint: "https://api.minimaxi.com",
+      }),
+      "minimax-key",
+      { signal: controller.signal },
+    )
+  })
+
   it("removes the SecureStore entry after Core removes a profile", async () => {
     jest.mocked(ttsGetConfig).mockResolvedValue({
       ...systemConfig,
@@ -586,4 +630,55 @@ it("converts voice names across the native map boundary without losing them in J
       ],
     }),
   )
+})
+
+it("deduplicates credential lookups across profiles and providers sharing a credential reference", async () => {
+  const credentialReference = "ryoumon.myreader.tts.minimax"
+  jest.mocked(readTtsCredential).mockResolvedValue("secret")
+  jest.mocked(ttsGetConfig).mockResolvedValue({
+    ...systemConfig,
+    profiles: [
+      { ...openAiProfile, id: "m1", credentialReference },
+      { ...openAiProfile, id: "m2", credentialReference },
+      { ...openAiProfile, id: "m3", credentialReference },
+    ],
+    providers: [
+      {
+        id: "minimax",
+        name: "MiniMax",
+        kind: "miniMax",
+        endpoint: "https://api.minimaxi.com",
+        credentialReference,
+        modelScopedVoices: false,
+        voices: ["v1"],
+        models: [
+          {
+            id: "m1",
+            model: "speech-2.8-hd",
+            responseFormat: "mp3",
+            voices: [],
+          },
+          {
+            id: "m2",
+            model: "speech-2.8-turbo",
+            responseFormat: "mp3",
+            voices: [],
+          },
+          {
+            id: "m3",
+            model: "speech-2.6-hd",
+            responseFormat: "mp3",
+            voices: [],
+          },
+        ],
+      },
+    ],
+  })
+
+  const config = await getTtsConfig()
+
+  expect(readTtsCredential).toHaveBeenCalledTimes(1)
+  expect(readTtsCredential).toHaveBeenCalledWith(credentialReference)
+  expect(config.providers[0]?.hasCredential).toBe(true)
+  expect(config.profiles.every((profile) => profile.hasCredential)).toBe(true)
 })

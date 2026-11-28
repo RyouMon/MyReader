@@ -39,3 +39,10 @@ export { Screen } from "./screen"
 export { SectionCard } from "./section-card"
 export { SectionLabel } from "./section-label"
 export { Skeleton } from "./skeleton"
+export {
+  AnchoredSuggestions,
+  type AnchoredSuggestionsProps,
+  type SuggestionOverlayItem,
+  SuggestionsOverlayHost,
+  useDismissSuggestions,
+} from "./suggestions-overlay"

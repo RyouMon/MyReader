@@ -3,14 +3,28 @@ import * as Speech from "expo-speech"
 import { synthesizeTts, type MobileTtsConfig } from "@/src/services/core/tts"
 import { useTtsPreview } from "./use-tts-preview"
 
-const mockPlayer = { play: jest.fn(), setPlaybackRate: jest.fn() }
+const mockListeners = new Set<(status: Record<string, unknown>) => void>()
 const mockSource = jest.fn()
-jest.mock("expo-audio", () => ({
-  useAudioPlayer: (source: string | null) => {
+const mockPlayer = {
+  addListener: jest.fn(
+    (event: string, listener: (status: Record<string, unknown>) => void) => {
+      if (event === "playbackStatusUpdate") mockListeners.add(listener)
+      return { remove: () => mockListeners.delete(listener) }
+    },
+  ),
+  pause: jest.fn(),
+  play: jest.fn(),
+  replace: jest.fn((source: string) => {
     mockSource(source)
-    return mockPlayer
-  },
-  useAudioPlayerStatus: () => ({ isLoaded: true, didJustFinish: false }),
+    for (const listener of mockListeners) {
+      listener({ isLoaded: true, didJustFinish: false })
+    }
+  }),
+  setPlaybackRate: jest.fn(),
+}
+jest.mock("expo-audio", () => ({
+  setAudioModeAsync: jest.fn().mockResolvedValue(undefined),
+  useAudioPlayer: () => mockPlayer,
 }))
 jest.mock("expo-speech", () => ({ speak: jest.fn(), stop: jest.fn() }))
 jest.mock("@/src/services/core/tts", () => ({ synthesizeTts: jest.fn() }))

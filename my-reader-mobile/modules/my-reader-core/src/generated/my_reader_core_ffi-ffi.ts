@@ -961,6 +961,10 @@ interface NativeModuleInterface {
     model: Uint8Array,
     credential: Uint8Array,
   ): bigint;
+  ubrn_uniffi_my_reader_core_ffi_fn_func_tts_discover_voices(
+    profile: Uint8Array,
+    credential: Uint8Array,
+  ): bigint;
   ubrn_uniffi_my_reader_core_ffi_fn_func_tts_get_config(
     configPath: Uint8Array,
   ): bigint;
@@ -1174,6 +1178,7 @@ interface NativeModuleInterface {
   ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_change_usage(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_discover_models(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_discover_qwen_voices(): number;
+  ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_discover_voices(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_get_config(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_list_voices(): number;
   ubrn_uniffi_my_reader_core_ffi_checksum_func_tts_preview_provider(): number;

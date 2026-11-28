@@ -1,7 +1,9 @@
 import { expect, it } from "vitest"
 import {
+  mergeSharedTtsVoices,
   mergeTtsVoices,
   newTtsModel,
+  newTtsProviderDraft,
   setTtsVoiceScope,
   ttsDraftInput,
   type TtsProviderDraft,
@@ -46,8 +48,8 @@ it("appends newly discovered voices without duplicating saved IDs", () => {
     voices: ["Cherry"],
   }
   const result = mergeTtsVoices(model, [
-    { id: "Cherry", language: "zh", gender: null },
-    { id: "new", language: "zh", gender: null },
+    { id: "Cherry", name: null, language: "zh", gender: null },
+    { id: "new", name: null, language: "zh", gender: null },
   ])
   expect(result.voices).toEqual(["Cherry", "new"])
 })
@@ -60,4 +62,36 @@ it("includes the audition model's shared voices and provider credential identity
     options: { voices: ["reader", "actor"] },
   })
   expect(result.credential).toBe("draft-key")
+})
+it("prefills native provider defaults and fills discovered voice display names without overwriting custom ones", () => {
+  const minimax = newTtsProviderDraft("miniMax", undefined, {
+    regionCode: "CN",
+  })
+  expect(minimax).toMatchObject({
+    kind: "miniMax",
+    endpoint: "https://api.minimaxi.com",
+    modelScopedVoices: false,
+  })
+  expect(minimax.models[0]?.model).toBe("speech-2.8-turbo")
+  expect(
+    newTtsProviderDraft("miniMax", undefined, { regionCode: "US" }).endpoint,
+  ).toBe("https://api.minimax.io")
+
+  const volcengine = newTtsProviderDraft("volcengine", "火山引擎（豆包语音）")
+  expect(volcengine).toMatchObject({
+    kind: "volcengine",
+    name: "火山引擎（豆包语音）",
+    modelScopedVoices: true,
+  })
+  expect(volcengine.models[0]?.model).toBe("seed-tts-2.0")
+
+  const merged = mergeSharedTtsVoices(
+    { ...minimax, voices: ["v1"], voiceNames: { v1: "Custom" } },
+    [
+      { id: "v1", name: "Remote One", language: "zh", gender: null },
+      { id: "v2", name: "Remote Two", language: "en", gender: null },
+    ],
+  )
+  expect(merged.voices).toEqual(["v1", "v2"])
+  expect(merged.voiceNames).toEqual({ v1: "Custom", v2: "Remote Two" })
 })

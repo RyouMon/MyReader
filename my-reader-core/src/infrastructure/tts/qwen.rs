@@ -1,10 +1,7 @@
 use super::map_reqwest_error;
 use crate::TtsErrorKind;
 use crate::{
-    models::{
-        QwenTtsModel, TtsAudioFormat, TtsProviderOptions, TtsProviderProfile, TtsSynthesisRequest,
-        TtsVoice,
-    },
+    models::{QwenTtsModel, TtsAudioFormat, TtsProviderProfile, TtsSynthesisRequest, TtsVoice},
     CoreError,
 };
 use serde_json::{json, Value};
@@ -52,6 +49,7 @@ pub(crate) fn model(id: &str, endpoint: &str) -> Result<QwenTtsModel, CoreError>
 fn voice(id: &str, language: &str) -> TtsVoice {
     TtsVoice {
         id: id.into(),
+        name: None,
         language: language.into(),
         gender: None,
     }
@@ -62,17 +60,14 @@ pub(crate) fn validate_profile(profile: &TtsProviderProfile) -> Result<(), CoreE
         profile.model.as_deref().unwrap_or_default(),
         &profile.endpoint,
     )?;
-    let TtsProviderOptions::Qwen {
-        response_format,
-        instructions,
-        ..
-    } = &profile.options
-    else {
+    if profile.options.kind != crate::models::TtsProviderKind::Qwen {
         return Err(tts_error(
             TtsErrorKind::Configuration,
             "TTS_PROVIDER_OPTIONS_MISMATCH",
         ));
-    };
+    }
+    let response_format = &profile.options.response_format;
+    let instructions = &profile.options.instructions;
     if !selected.audio_formats.contains(response_format) {
         return Err(tts_error(
             TtsErrorKind::Configuration,
@@ -101,17 +96,14 @@ pub(crate) async fn synthesize(
         profile.model.as_deref().unwrap_or_default(),
         &profile.endpoint,
     )?;
-    let TtsProviderOptions::Qwen {
-        response_format,
-        instructions,
-        ..
-    } = &profile.options
-    else {
+    if profile.options.kind != crate::models::TtsProviderKind::Qwen {
         return Err(tts_error(
             TtsErrorKind::Configuration,
             "TTS_PROVIDER_OPTIONS_MISMATCH",
         ));
-    };
+    }
+    let response_format = &profile.options.response_format;
+    let instructions = &profile.options.instructions;
     let credential = credential
         .filter(|value| !value.trim().is_empty())
         .ok_or_else(|| tts_error(TtsErrorKind::Unauthorized, "TTS_CREDENTIAL_REQUIRED"))?;
@@ -402,7 +394,7 @@ fn endpoint(profile: &TtsProviderProfile, audio: bool) -> Result<Url, CoreError>
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::TtsProviderKind;
+    use crate::models::{TtsProviderKind, TtsProviderOptions};
 
     #[test]
     fn qianwen_flash_uses_its_documented_http_endpoint() {
@@ -414,7 +406,8 @@ mod tests {
             endpoint: String::new(),
             model: Some("qwen3-tts-flash".into()),
             credential_reference: None,
-            options: TtsProviderOptions::Qwen {
+            options: TtsProviderOptions {
+                kind: TtsProviderKind::Qwen,
                 response_format: TtsAudioFormat::Wav,
                 instructions: None,
                 voices: vec!["Bunny".into()],

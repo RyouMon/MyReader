@@ -240,10 +240,7 @@ async fn add_format_to_seeded_book(
     format: &str,
 ) {
     let db_path = root.join("metadata.db");
-    let url = format!(
-        "sqlite://{}?mode=rwc",
-        db_path.to_str().expect("valid utf8")
-    );
+    let url = my_reader_core::test_support::sqlite_file_url(&db_path, "rwc");
     let db = Database::connect(&url).await.expect("connect to setup db");
     data::ActiveModel {
         id: Set(data_id),

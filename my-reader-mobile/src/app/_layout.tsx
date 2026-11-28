@@ -123,6 +123,19 @@ function RootNavigator() {
             }}
           />
           <Stack.Screen
+            name="model-discovery"
+            options={{
+              contentStyle: { backgroundColor: palette.background },
+              headerBackVisible: false,
+              headerLargeTitle: false,
+              headerShown: Platform.OS === "ios",
+              presentation: "formSheet",
+              sheetAllowedDetents: [1],
+              sheetGrabberVisible: true,
+              title: t("providerEditor.selectModels"),
+            }}
+          />
+          <Stack.Screen
             name="(add-library)"
             options={{ headerShown: false, presentation: "modal" }}
           />

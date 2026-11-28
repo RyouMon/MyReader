@@ -1,3 +1,4 @@
+import { ttsProviderMeta } from "@my-reader/tools/tts-providers"
 import { router, Stack, useFocusEffect } from "expo-router"
 import { useCallback, useState } from "react"
 import { useTranslation } from "react-i18next"
@@ -65,7 +66,13 @@ function TtsProviderList({
             <ListRow
               key={profile.id}
               title={profile.name}
-              detail={`${profile.kind === "qwen" ? "Qwen" : t("settings.tts.providerKinds.openAiCompatible")} · ${profile.endpoint}`}
+              detail={`${
+                profile.kind === "openAiCompatible"
+                  ? t("settings.tts.providerKinds.openAiCompatible")
+                  : profile.kind === "volcengine"
+                    ? t("ttsProviders.volcengine")
+                    : ttsProviderMeta(profile.kind).defaultName
+              } · ${profile.endpoint}`}
               isLast={index === profiles.length - 1}
               onPress={() =>
                 router.push({

@@ -22,14 +22,14 @@ fn library_fixture(id: &str, path: &str) -> LibraryConfig {
 }
 
 async fn projection_database(app: &TestApp, library_id: &str) -> sea_orm::DatabaseConnection {
-    Database::connect(format!(
-        "sqlite://{}?mode=ro",
-        app.app_data_dir()
-            .join("libraries")
-            .join(library_id)
-            .join(".myreader")
-            .join("myreader.db")
-            .display()
+    let db_path = app
+        .app_data_dir()
+        .join("libraries")
+        .join(library_id)
+        .join(".myreader")
+        .join("myreader.db");
+    Database::connect(my_reader_core::test_support::sqlite_file_url(
+        &db_path, "ro",
     ))
     .await
     .unwrap()

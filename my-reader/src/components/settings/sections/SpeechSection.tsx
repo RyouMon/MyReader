@@ -1,7 +1,20 @@
-import { ttsVoiceLabel } from "@my-reader/tools/tts-voice-names"
+import {
+  TTS_PROVIDER_KINDS,
+  ttsDefaultEndpoint,
+  ttsEndpointSuggestions,
+  ttsProviderMeta,
+} from "@my-reader/tools/tts-providers"
 import { ttsUsageMessage } from "@my-reader/tools/tts-selection-usage"
+import { ttsVoiceLabel } from "@my-reader/tools/tts-voice-names"
 import { Loader2, Server, Volume2 } from "lucide-react"
-import { type CSSProperties, useCallback, useEffect, useState } from "react"
+import {
+  type CSSProperties,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react"
 import { useTranslation } from "react-i18next"
 import { AddPanelButton } from "@/components/common/AddPanelButton"
 import { AppRow } from "@/components/common/AppRow"
@@ -10,13 +23,14 @@ import {
   FlowDialogContent,
   FlowDialogHeader,
 } from "@/components/common/FlowDialog"
+import { FormPasswordField } from "@/components/common/FormPasswordField"
 import { FormScrollArea } from "@/components/common/FormScrollArea"
 import { FormSelect, FormSelectItem } from "@/components/common/FormSelect"
 import { FormSlider } from "@/components/common/FormSlider"
+import { FormSuggestionField } from "@/components/common/FormSuggestionField"
 import { FormSwitch } from "@/components/common/FormSwitch"
-import { FormPasswordField } from "@/components/common/FormPasswordField"
-import { useProviderCredential } from "@/hooks/useProviderCredential"
 import { FormTextField } from "@/components/common/FormTextField"
+import { useProviderCredential } from "@/hooks/useProviderCredential"
 import { GroupList, GroupListItem } from "@/components/common/GroupList"
 import { RowActions } from "@/components/common/RowActions"
 import { SaveButton } from "@/components/common/SaveButton"
@@ -45,10 +59,11 @@ import type {
   TtsConfigDto,
   TtsPlaybackPreferencesDto,
   TtsProviderDto,
+  TtsProviderKindDto,
 } from "@/lib/tauri-specta"
 import { notifyTtsConfigChanged } from "@/lib/tts/events"
 import {
-  newTtsModel,
+  newTtsProviderDraft,
   type TtsProviderDraft,
   modelVoices as usesModelVoices,
 } from "@/lib/tts-provider-draft"
@@ -64,20 +79,13 @@ function systemVoiceId(voice: SpeechSynthesisVoice): string {
   return voice.voiceURI || voice.name
 }
 
-function newProfileDraft(): ProfileDraft {
-  return {
-    id: "",
-    name: "OpenAI",
-    kind: "openAiCompatible",
-    endpoint: "https://api.openai.com/v1",
-    modelScopedVoices: false,
-    models: [newTtsModel("gpt-4o-mini-tts")],
-    voices: [""],
-
-    credential: "",
-    hasCredential: false,
-    clearCredential: false,
-  }
+function providerKindLabel(
+  kind: TtsProviderKindDto,
+  t: (key: string) => string,
+): string {
+  if (kind === "openAiCompatible") return t("settings.speech.openAiCompatible")
+  if (kind === "volcengine") return t("ttsProviders.volcengine")
+  return ttsProviderMeta(kind).defaultName
 }
 
 function profileDraft(provider: TtsProviderDto): ProfileDraft {
@@ -495,7 +503,7 @@ export function TtsProviderManager({
                     </div>
                   }
                   body={profile.name}
-                  detail={`${profile.kind === "qwen" ? "Qwen" : t("settings.speech.openAiCompatible")} · ${profile.endpoint}`}
+                  detail={`${providerKindLabel(profile.kind, t)} · ${profile.endpoint}`}
                   actions={
                     <RowActions
                       name={profile.name}
@@ -530,18 +538,16 @@ export function TtsProviderManager({
           loading={storedCredential.loading}
           saving={saving}
           onOpenChange={handleProviderDialogOpenChange}
-          onChooseOpenAi={() => setDraft(newProfileDraft())}
-          onChooseQwen={() => {
-            setDraft({
-              ...newProfileDraft(),
-              kind: "qwen",
-              name: "Qwen",
-              endpoint: "",
-              modelScopedVoices: true,
-              models: [newTtsModel()],
-              voices: [],
-            })
-          }}
+          onChooseKind={(kind) =>
+            setDraft(
+              newTtsProviderDraft(
+                kind,
+                kind === "volcengine"
+                  ? t("ttsProviders.volcengine")
+                  : undefined,
+              ),
+            )
+          }
           onBack={() => {
             setDraft(null)
             setProviderError(null)
@@ -562,8 +568,7 @@ function ProviderDialog({
   error,
   saving,
   onOpenChange,
-  onChooseOpenAi,
-  onChooseQwen,
+  onChooseKind,
   loading,
   onBack,
   onChange,
@@ -575,8 +580,7 @@ function ProviderDialog({
   error: string | null
   saving: boolean
   onOpenChange: (open: boolean) => void
-  onChooseOpenAi: () => void
-  onChooseQwen: () => void
+  onChooseKind: (kind: TtsProviderKindDto) => void
   loading: boolean
   onBack: () => void
   onChange: (draft: ProfileDraft) => void
@@ -607,16 +611,18 @@ function ProviderDialog({
         <div className="min-h-0">
           {choosingType ? (
             <div className="grid h-full content-start gap-3 overflow-y-auto px-6 py-5">
-              <FlowDialogChoice
-                icon={Server}
-                title={t("settings.speech.addOpenAi")}
-                onClick={onChooseOpenAi}
-              />
-              <FlowDialogChoice
-                icon={Volume2}
-                title="Qwen"
-                onClick={onChooseQwen}
-              />
+              {TTS_PROVIDER_KINDS.map((kind) => (
+                <FlowDialogChoice
+                  key={kind}
+                  icon={kind === "openAiCompatible" ? Server : Volume2}
+                  title={
+                    kind === "openAiCompatible"
+                      ? t("settings.speech.addOpenAi")
+                      : providerKindLabel(kind, t)
+                  }
+                  onClick={() => onChooseKind(kind)}
+                />
+              ))}
               {error ? <StatusNotice tone="error">{error}</StatusNotice> : null}
             </div>
           ) : loading ? (
@@ -645,6 +651,7 @@ function ProviderDialog({
 
 function ProfileEditor({
   draft,
+  themeStyle,
   error,
   saving,
   onChange,
@@ -660,10 +667,30 @@ function ProfileEditor({
   const { t } = useTranslation()
   const { fieldErrors, validationProps } = useFormValidation(draft)
   const [previewId, setPreviewId] = useState(draft.models[0]?.id ?? "")
+  const [credentialError, setCredentialError] = useState<string | null>(null)
+  const credentialInputRef = useRef<HTMLInputElement>(null)
   const previewModel =
     draft.models.find((model) => model.id === previewId) ?? draft.models[0]
   const update = (patch: Partial<ProfileDraft>) =>
     onChange({ ...draft, ...patch })
+  useEffect(() => {
+    setCredentialError(null)
+  }, [draft.id, draft.kind])
+  const endpointSuggestions = useMemo(
+    () =>
+      ttsEndpointSuggestions(draft.kind).map((item) => ({
+        value: item.url,
+        label: item.labelKey
+          ? t(item.labelKey)
+          : (item.fallbackLabel ?? item.url),
+      })),
+    [draft.kind, t],
+  )
+  const handleCredentialRequired = useCallback(() => {
+    setCredentialError(t("ttsProviders.credentialRequired"))
+    credentialInputRef.current?.scrollIntoView?.({ block: "nearest" })
+    credentialInputRef.current?.focus()
+  }, [t])
 
   return (
     <form
@@ -696,7 +723,7 @@ function ProfileEditor({
                 helperText={fieldErrors["tts-profile-name"]}
                 onChange={(event) => update({ name: event.target.value })}
               />
-              <FormTextField
+              <FormSuggestionField
                 id="tts-profile-endpoint"
                 label={t("settings.speech.endpoint")}
                 type="url"
@@ -705,33 +732,45 @@ function ProfileEditor({
                 fullWidth
                 error={Boolean(fieldErrors["tts-profile-endpoint"])}
                 helperText={fieldErrors["tts-profile-endpoint"]}
-                placeholder={
-                  draft.kind === "qwen"
-                    ? undefined
-                    : "https://api.openai.com/v1"
-                }
-                onChange={(event) => update({ endpoint: event.target.value })}
+                placeholder={ttsDefaultEndpoint(draft.kind) || undefined}
+                suggestions={endpointSuggestions}
+                suggestionsLabel={t("ttsProviders.endpointSuggestions")}
+                themeStyle={themeStyle}
+                onValueChange={(endpoint) => update({ endpoint })}
               />
             </FieldGroup>
 
             <FormPasswordField
               id="tts-profile-credential"
+              inputRef={credentialInputRef}
               label={t("settings.speech.credential")}
+              error={Boolean(credentialError)}
+              helperText={credentialError ?? undefined}
+              placeholder={
+                draft.kind === "volcengine"
+                  ? t("ttsProviders.volcengineCredentialHint")
+                  : draft.kind === "openAiCompatible"
+                    ? t("settings.speech.credentialOptional")
+                    : undefined
+              }
               fullWidth
               autoComplete="new-password"
               value={draft.credential}
-              onChange={(event) =>
+              onChange={(event) => {
+                setCredentialError(null)
                 update({
                   credential: event.target.value,
                   clearCredential: !event.target.value.trim(),
                 })
-              }
+              }}
             />
           </FieldGroup>
           <TtsProviderModels
             draft={draft}
             previewModel={previewModel}
             fieldErrors={fieldErrors}
+            themeStyle={themeStyle}
+            onCredentialRequired={handleCredentialRequired}
             onChange={onChange}
           />
         </FieldGroup>
@@ -871,8 +910,8 @@ function useProviderDialogCopy(draft: ProfileDraft | null) {
     ? t("settings.speech.addProvider")
     : draft.id
       ? t("settings.speech.editProvider")
-      : draft.kind === "qwen"
-        ? t("qwenTts.add", { name: "Qwen" })
-        : t("settings.speech.addOpenAi")
+      : draft.kind === "openAiCompatible"
+        ? t("settings.speech.addOpenAi")
+        : t("qwenTts.add", { name: providerKindLabel(draft.kind, t) })
   return { title, description: undefined }
 }

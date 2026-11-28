@@ -16,7 +16,6 @@ export function ProviderModels({
   onRemove,
   children,
   actions,
-  discovery,
   fieldErrors,
   detailsClassName,
 }: {
@@ -28,7 +27,6 @@ export function ProviderModels({
   onRemove: (index: number) => void
   children?: (index: number) => ReactNode
   actions?: ReactNode
-  discovery?: ReactNode
   fieldErrors?: Record<string, string>
   detailsClassName?: string
 }) {
@@ -48,7 +46,6 @@ export function ProviderModels({
           </Button>
         </div>
       </div>
-      {discovery}
       <FieldGroup className="gap-4">
         {models.map((model, index) => (
           <div

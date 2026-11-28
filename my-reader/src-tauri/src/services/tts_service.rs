@@ -35,6 +35,11 @@ pub enum TtsEngineSelectionDto {
 pub enum TtsProviderKindDto {
     OpenAiCompatible,
     Qwen,
+    MiniMax,
+    Volcengine,
+    ElevenLabs,
+    FishAudio,
+    Gemini,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, Type)]
@@ -49,25 +54,15 @@ pub enum TtsAudioFormatDto {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
-#[serde(
-    tag = "kind",
-    rename_all = "camelCase",
-    rename_all_fields = "camelCase"
-)]
-pub enum TtsProviderOptionsDto {
-    OpenAiCompatible {
-        #[serde(default)]
-        response_format: TtsAudioFormatDto,
-        #[serde(default)]
-        instructions: Option<String>,
-        #[serde(default)]
-        voices: Vec<String>,
-    },
-    Qwen {
-        response_format: TtsAudioFormatDto,
-        instructions: Option<String>,
-        voices: Vec<String>,
-    },
+#[serde(rename_all = "camelCase")]
+pub struct TtsProviderOptionsDto {
+    pub kind: TtsProviderKindDto,
+    #[serde(default)]
+    pub response_format: TtsAudioFormatDto,
+    #[serde(default)]
+    pub instructions: Option<String>,
+    #[serde(default)]
+    pub voices: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Type)]
@@ -184,6 +179,7 @@ pub struct TtsProviderCapabilitiesDto {
 #[serde(rename_all = "camelCase")]
 pub struct TtsVoiceDto {
     pub id: String,
+    pub name: Option<String>,
     pub language: String,
     pub gender: Option<String>,
 }
@@ -336,6 +332,20 @@ impl DesktopTtsService {
         Ok(
             CoreTtsService::discover_models(&input.profile.into_core(), credential.as_deref())
                 .await?,
+        )
+    }
+
+    pub async fn discover_voices(
+        config_path: &Path,
+        input: UpsertTtsProviderInput,
+    ) -> Result<Vec<TtsVoiceDto>, AppError> {
+        let credential = draft_credential(config_path, &input)?;
+        Ok(
+            CoreTtsService::discover_voices(&input.profile.into_core(), credential.as_deref())
+                .await?
+                .into_iter()
+                .map(Into::into)
+                .collect(),
         )
     }
 
@@ -613,8 +623,7 @@ fn config_dto(config: my_reader_core::models::TtsConfig) -> Result<TtsConfigDto,
                 voices: p.voices,
                 voice_names: Some(p.voice_names),
 
-                model_scoped_voices: p.kind == my_reader_core::models::TtsProviderKind::Qwen
-                    || p.model_scoped_voices,
+                model_scoped_voices: p.kind.forces_model_scoped_voices() || p.model_scoped_voices,
                 has_credential,
                 models: p
                     .models
@@ -706,6 +715,11 @@ impl From<TtsProviderKindDto> for my_reader_core::models::TtsProviderKind {
         match value {
             TtsProviderKindDto::OpenAiCompatible => Self::OpenAiCompatible,
             TtsProviderKindDto::Qwen => Self::Qwen,
+            TtsProviderKindDto::MiniMax => Self::MiniMax,
+            TtsProviderKindDto::Volcengine => Self::Volcengine,
+            TtsProviderKindDto::ElevenLabs => Self::ElevenLabs,
+            TtsProviderKindDto::FishAudio => Self::FishAudio,
+            TtsProviderKindDto::Gemini => Self::Gemini,
         }
     }
 }
@@ -715,6 +729,11 @@ impl From<my_reader_core::models::TtsProviderKind> for TtsProviderKindDto {
         match value {
             my_reader_core::models::TtsProviderKind::OpenAiCompatible => Self::OpenAiCompatible,
             my_reader_core::models::TtsProviderKind::Qwen => Self::Qwen,
+            my_reader_core::models::TtsProviderKind::MiniMax => Self::MiniMax,
+            my_reader_core::models::TtsProviderKind::Volcengine => Self::Volcengine,
+            my_reader_core::models::TtsProviderKind::ElevenLabs => Self::ElevenLabs,
+            my_reader_core::models::TtsProviderKind::FishAudio => Self::FishAudio,
+            my_reader_core::models::TtsProviderKind::Gemini => Self::Gemini,
         }
     }
 }
@@ -745,50 +764,22 @@ impl From<my_reader_core::models::TtsAudioFormat> for TtsAudioFormatDto {
 
 impl From<TtsProviderOptionsDto> for my_reader_core::models::TtsProviderOptions {
     fn from(value: TtsProviderOptionsDto) -> Self {
-        match value {
-            TtsProviderOptionsDto::Qwen {
-                response_format,
-                instructions,
-                voices,
-            } => Self::Qwen {
-                response_format: response_format.into(),
-                instructions,
-                voices,
-            },
-            TtsProviderOptionsDto::OpenAiCompatible {
-                response_format,
-                instructions,
-                voices,
-            } => Self::OpenAiCompatible {
-                response_format: response_format.into(),
-                instructions,
-                voices,
-            },
+        Self {
+            kind: value.kind.into(),
+            response_format: value.response_format.into(),
+            instructions: value.instructions,
+            voices: value.voices,
         }
     }
 }
 
 impl From<my_reader_core::models::TtsProviderOptions> for TtsProviderOptionsDto {
     fn from(value: my_reader_core::models::TtsProviderOptions) -> Self {
-        match value {
-            my_reader_core::models::TtsProviderOptions::Qwen {
-                response_format,
-                instructions,
-                voices,
-            } => Self::Qwen {
-                response_format: response_format.into(),
-                instructions,
-                voices,
-            },
-            my_reader_core::models::TtsProviderOptions::OpenAiCompatible {
-                response_format,
-                instructions,
-                voices,
-            } => Self::OpenAiCompatible {
-                response_format: response_format.into(),
-                instructions,
-                voices,
-            },
+        Self {
+            kind: value.kind.into(),
+            response_format: value.response_format.into(),
+            instructions: value.instructions,
+            voices: value.voices,
         }
     }
 }
@@ -868,6 +859,7 @@ impl From<my_reader_core::models::TtsVoice> for TtsVoiceDto {
     fn from(value: my_reader_core::models::TtsVoice) -> Self {
         Self {
             id: value.id,
+            name: value.name,
             language: value.language,
             gender: value.gender,
         }
@@ -960,7 +952,8 @@ mod tests {
                 kind: TtsProviderKindDto::OpenAiCompatible,
                 endpoint: "https://api.openai.com/v1".into(),
                 model: Some("gpt-4o-mini-tts".into()),
-                options: TtsProviderOptionsDto::OpenAiCompatible {
+                options: TtsProviderOptionsDto {
+                    kind: TtsProviderKindDto::OpenAiCompatible,
                     response_format: TtsAudioFormatDto::Mp3,
                     instructions: None,
                     voices: vec!["reader-voice".into()],

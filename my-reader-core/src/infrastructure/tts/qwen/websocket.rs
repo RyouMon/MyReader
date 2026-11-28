@@ -19,7 +19,7 @@ use super::super::{
     SYNTHESIS_TIMEOUT,
 };
 use crate::{
-    models::{TtsProviderOptions, TtsProviderProfile, TtsSynthesisRequest},
+    models::{TtsProviderKind, TtsProviderProfile, TtsSynthesisRequest},
     CoreError,
 };
 
@@ -43,17 +43,14 @@ async fn synthesize_task(
     request: &TtsSynthesisRequest,
     credential: &str,
 ) -> Result<SynthesizedAudio, CoreError> {
-    let TtsProviderOptions::Qwen {
-        response_format,
-        instructions,
-        ..
-    } = &profile.options
-    else {
+    if profile.options.kind != TtsProviderKind::Qwen {
         return Err(tts_error(
             TtsErrorKind::Configuration,
             "TTS_PROVIDER_OPTIONS_MISMATCH",
         ));
-    };
+    }
+    let response_format = &profile.options.response_format;
+    let instructions = &profile.options.instructions;
     let mut url = Url::parse(&profile.endpoint)
         .map_err(|_| tts_error(TtsErrorKind::Configuration, "INVALID_TTS_ENDPOINT"))?;
     if !matches!(url.scheme(), "ws" | "wss") {

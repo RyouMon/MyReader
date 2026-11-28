@@ -155,14 +155,14 @@ async fn should_record_completion_when_final_reading_progress_is_saved() {
         }),
     );
 
-    let db = Database::connect(format!(
-        "sqlite://{}?mode=ro",
-        app.app_data_dir()
-            .join("libraries")
-            .join("lib-a")
-            .join(".myreader")
-            .join("myreader.db")
-            .display()
+    let db_path = app
+        .app_data_dir()
+        .join("libraries")
+        .join("lib-a")
+        .join(".myreader")
+        .join("myreader.db");
+    let db = Database::connect(my_reader_core::test_support::sqlite_file_url(
+        &db_path, "ro",
     ))
     .await
     .unwrap();

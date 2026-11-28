@@ -46,9 +46,9 @@ async fn should_initialize_automerge_replica_when_local_library_syncs() {
         .await
         .expect("local sync should succeed");
     let sidecar = app_data.path().join("libraries").join("lib-local");
-    let db = Database::connect(format!(
-        "sqlite://{}?mode=ro",
-        sidecar.join(".myreader").join("myreader.db").display()
+    let db = Database::connect(my_reader_core::test_support::sqlite_file_url(
+        &sidecar.join(".myreader").join("myreader.db"),
+        "ro",
     ))
     .await
     .unwrap();

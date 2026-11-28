@@ -89,3 +89,16 @@ it("keeps a floating placeholder separate from the editable value", () => {
   fireEvent.changeText(screen.getByLabelText("Display name"), "")
   expect(onChangeText).toHaveBeenLastCalledWith("")
 })
+
+it("prevents iOS single-line word-wrapping truncation while leaving multiline fields wrappable", () => {
+  const { rerender } = render(
+    <FormTextField
+      label="Endpoint"
+      value="https://generativelanguage.googleapis.com"
+    />,
+  )
+  expect(screen.getByLabelText("Endpoint").props.lineBreakModeIOS).toBe("tail")
+
+  rerender(<FormTextField label="Notes" value="line one" multiline />)
+  expect(screen.getByLabelText("Notes").props.lineBreakModeIOS).toBeUndefined()
+})

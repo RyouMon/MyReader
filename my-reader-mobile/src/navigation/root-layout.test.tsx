@@ -217,6 +217,15 @@ describe("RootLayout status bar ownership", () => {
       )
       expect(mockScreenProps).toHaveBeenCalledWith(
         expect.objectContaining({
+          name: "model-discovery",
+          options: expect.objectContaining({
+            presentation: "formSheet",
+            headerShown: true,
+          }),
+        }),
+      )
+      expect(mockScreenProps).toHaveBeenCalledWith(
+        expect.objectContaining({
           name: "reader",
           options: expect.objectContaining({
             presentation: "fullScreenModal",
@@ -234,6 +243,15 @@ describe("RootLayout status bar ownership", () => {
       expect(jest.mocked(StatusBar).mock.calls[0]?.[0]).toEqual({
         style: "dark",
       })
+      expect(mockScreenProps).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: "model-discovery",
+          options: expect.objectContaining({
+            presentation: "formSheet",
+            headerShown: false,
+          }),
+        }),
+      )
     }))
 
   it("omits expo-status-bar on Android while on the reader route", () => {

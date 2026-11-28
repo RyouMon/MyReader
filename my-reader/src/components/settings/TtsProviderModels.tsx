@@ -1,44 +1,82 @@
-import { useTtsRemoval } from "@/hooks/useTtsRemovalConfirmation"
+import {
+  isTtsCredentialRequiredError,
+  ttsProviderMeta,
+} from "@my-reader/tools/tts-providers"
 import { Loader2 } from "lucide-react"
+import { type CSSProperties, useRef, useState } from "react"
+import { useTranslation } from "react-i18next"
 import { FormSelect, FormSelectItem } from "@/components/common/FormSelect"
 import { FormSwitch } from "@/components/common/FormSwitch"
-import { useRef, useState } from "react"
-import { useTranslation } from "react-i18next"
 import { StatusNotice } from "@/components/common/StatusNotice"
 import { ModelDiscovery } from "@/components/settings/ModelDiscovery"
 import { ProviderModels } from "@/components/settings/ProviderModels"
+import { TtsModelDetails } from "@/components/settings/TtsModelDetails"
 import { TtsVoicesEditor } from "@/components/settings/TtsVoicesEditor"
 import { Button } from "@/components/ui/button"
 import { FieldGroup } from "@/components/ui/field"
-import { TtsModelDetails } from "@/components/settings/TtsModelDetails"
 import { Separator } from "@/components/ui/separator"
 import { useTtsModelDiscovery } from "@/hooks/useTtsModelDiscovery"
+import { useTtsRemoval } from "@/hooks/useTtsRemovalConfirmation"
+import { apiErrorKind } from "@/lib/api-error"
 import { errorMessage } from "@/lib/error-presentation"
+import type { TtsModelDto } from "@/lib/tauri-specta"
 import {
-  modelVoices,
+  mergeSharedTtsVoices,
   mergeTtsVoices,
+  modelVoices,
   newTtsModel,
   setTtsVoiceScope,
   type TtsProviderDraft,
 } from "@/lib/tts-provider-draft"
-import type { TtsModelDto } from "@/lib/tauri-specta"
+
+function SharedVoicesFetchAction({
+  visible,
+  busy,
+  pending,
+  onClick,
+}: {
+  visible: boolean
+  busy: boolean
+  pending: boolean
+  onClick: () => void
+}) {
+  const { t } = useTranslation()
+  if (!visible) return null
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      disabled={busy}
+      onClick={onClick}
+    >
+      {pending ? <Loader2 className="animate-spin" /> : null}
+      {t("providerEditor.fetchVoices")}
+    </Button>
+  )
+}
 
 export function TtsProviderModels({
   draft,
   previewModel,
   fieldErrors,
+  themeStyle,
+  onCredentialRequired,
   onChange,
 }: {
   draft: TtsProviderDraft
   previewModel?: TtsModelDto
   fieldErrors?: Record<string, string>
+  themeStyle?: CSSProperties
+  onCredentialRequired?: () => void
   onChange: (draft: TtsProviderDraft) => void
 }) {
   const { t } = useTranslation()
   const confirmRemoval = useTtsRemoval()
   const [selected, setSelected] = useState<number | null>(0)
   const [showDiscovery, setShowDiscovery] = useState(false)
-  const { discover, voices: importing } = useTtsModelDiscovery()
+  const { discover, voices: importing, fetchVoices } = useTtsModelDiscovery()
+  const meta = ttsProviderMeta(draft.kind)
   const identity = (value: TtsProviderDraft) =>
     JSON.stringify([
       value.id,
@@ -55,7 +93,8 @@ export function TtsProviderModels({
   const current = useRef(draft)
   current.current = draft
   const scoped = modelVoices(draft)
-  const busy = discover.isPending || importing.isPending
+  const busy =
+    discover.isPending || importing.isPending || fetchVoices.isPending
   const patch = (index: number, change: Partial<TtsModelDto>) =>
     onChange({
       ...draft,
@@ -63,13 +102,21 @@ export function TtsProviderModels({
         index === i ? { ...model, ...change } : model,
       ),
     })
+  const handleCredentialError = (error: unknown, reset: () => void) => {
+    if (
+      !isTtsCredentialRequiredError(error, current.current, apiErrorKind(error))
+    )
+      return
+    reset()
+    onCredentialRequired?.()
+  }
   const addModels = (ids: string[]) => {
-    const identity = JSON.stringify(draft)
+    const snapshot = JSON.stringify(draft)
     importing.mutate(
       { draft, ids, catalog },
       {
         onSuccess: (models) => {
-          if (identity !== JSON.stringify(current.current)) return
+          if (snapshot !== JSON.stringify(current.current)) return
           const previous = draft.models.filter((model) => model.model.trim())
           const additions = models.filter(
             (model) => !previous.some((old) => old.model === model.model),
@@ -81,6 +128,7 @@ export function TtsProviderModels({
           setSelected(previous.length)
           setShowDiscovery(false)
         },
+        onError: (error) => handleCredentialError(error, importing.reset),
       },
     )
   }
@@ -109,7 +157,10 @@ export function TtsProviderModels({
     patch(
       index,
       known
-        ? { ...newTtsModel(known.id, known), id: draft.models[index].id }
+        ? {
+            ...newTtsModel(known.id, known, draft.kind),
+            id: draft.models[index].id,
+          }
         : change,
     )
   }
@@ -137,13 +188,51 @@ export function TtsProviderModels({
     }
     onChange({
       ...draft,
-      models: [...draft.models, newTtsModel()],
+      models: [...draft.models, newTtsModel("", undefined, draft.kind)],
     })
     setSelected(draft.models.length)
   }
+  const refreshScopedVoices = (index: number) => {
+    const model = draft.models[index]
+    const snapshot = JSON.stringify(draft)
+    fetchVoices.mutate(
+      { draft, model },
+      {
+        onSuccess: (discovered) => {
+          if (snapshot !== JSON.stringify(current.current)) return
+          patch(index, mergeTtsVoices(model, discovered))
+        },
+        onError: (error) => handleCredentialError(error, fetchVoices.reset),
+      },
+    )
+  }
+  const refreshSharedVoices = () => {
+    const snapshot = JSON.stringify(draft)
+    fetchVoices.mutate(
+      { draft, model: previewModel },
+      {
+        onSuccess: (discovered) => {
+          if (snapshot !== JSON.stringify(current.current)) return
+          onChange(mergeSharedTtsVoices(draft, discovered))
+        },
+        onError: (error) => handleCredentialError(error, fetchVoices.reset),
+      },
+    )
+  }
+  const rawDiscoveryError =
+    discover.error || importing.error || fetchVoices.error
+  const discoveryError =
+    rawDiscoveryError &&
+    !isTtsCredentialRequiredError(
+      rawDiscoveryError,
+      draft,
+      apiErrorKind(rawDiscoveryError),
+    )
+      ? rawDiscoveryError
+      : null
   return (
     <FieldGroup>
-      {draft.kind === "openAiCompatible" ? (
+      {meta.allowsCustomVoiceScope ? (
         <FormSwitch
           label={t("aiProviders.modelScopedVoices")}
           checked={scoped}
@@ -152,24 +241,22 @@ export function TtsProviderModels({
         />
       ) : null}
       <Separator />
-      {discover.error || importing.error ? (
-        <StatusNotice tone="error">
-          {errorMessage(discover.error || importing.error)}
-        </StatusNotice>
+      {discoveryError ? (
+        <StatusNotice tone="error">{errorMessage(discoveryError)}</StatusNotice>
+      ) : null}
+      {showDiscovery && options ? (
+        <ModelDiscovery
+          models={options}
+          existing={draft.models.map((model) => model.model)}
+          busy={importing.isPending}
+          themeStyle={themeStyle}
+          onAdd={addModels}
+          onClose={() => setShowDiscovery(false)}
+        />
       ) : null}
       <fieldset disabled={busy} className="min-w-0">
         <ProviderModels
           fieldErrors={fieldErrors}
-          discovery={
-            showDiscovery && options ? (
-              <ModelDiscovery
-                models={options}
-                existing={draft.models.map((model) => model.model)}
-                onAdd={addModels}
-                onClose={() => setShowDiscovery(false)}
-              />
-            ) : null
-          }
           models={draft.models}
           selected={selected}
           onSelect={setSelected}
@@ -191,6 +278,8 @@ export function TtsProviderModels({
                       if (identity(current.current) === source)
                         setShowDiscovery(true)
                     },
+                    onError: (error) =>
+                      handleCredentialError(error, discover.reset),
                   },
                 )
               }}
@@ -206,33 +295,11 @@ export function TtsProviderModels({
                   draft={draft}
                   model={draft.models[index]}
                   fieldErrors={fieldErrors}
+                  onCredentialRequired={onCredentialRequired}
                   onVoicesChange={(voices, names) =>
                     updateVoices(draft.models[index], voices, names)
                   }
-                  onRefresh={() => {
-                    const model = draft.models[index]
-                    const identity = JSON.stringify(draft)
-                    importing.mutate(
-                      { draft, ids: [model.model], catalog: [] },
-                      {
-                        onSuccess: ([result]) => {
-                          if (identity !== JSON.stringify(current.current))
-                            return
-                          patch(
-                            index,
-                            mergeTtsVoices(
-                              model,
-                              result.voices.map((id) => ({
-                                id,
-                                language: "mul",
-                                gender: null,
-                              })),
-                            ),
-                          )
-                        },
-                      },
-                    )
-                  }}
+                  onRefresh={() => refreshScopedVoices(index)}
                 />
               )
             : undefined}
@@ -246,6 +313,17 @@ export function TtsProviderModels({
             model={previewModel}
             fieldErrors={fieldErrors}
             disabled={busy}
+            onCredentialRequired={onCredentialRequired}
+            actions={
+              <SharedVoicesFetchAction
+                visible={
+                  meta.supportsVoiceDiscovery && Boolean(draft.endpoint.trim())
+                }
+                busy={busy}
+                pending={fetchVoices.isPending}
+                onClick={refreshSharedVoices}
+              />
+            }
             onChange={(voices, names) => {
               if (previewModel) updateVoices(previewModel, voices, names)
               else onChange({ ...draft, voices, voiceNames: names })

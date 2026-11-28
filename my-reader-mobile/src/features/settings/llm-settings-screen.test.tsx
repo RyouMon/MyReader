@@ -18,6 +18,10 @@ import type { ReaderChromePalette } from "@/src/design/reader-chrome-palette"
 import type { Library } from "@my-reader/tools/types/library"
 import LlmSettingsScreen from "./llm-settings-screen"
 import LlmProviderFormScreen from "./llm-provider-form-screen"
+import {
+  closeModelDiscovery,
+  useModelDiscoveryStore,
+} from "./model-discovery-session"
 import { BookNarrationSettings } from "../reader/components/reader/chrome/BookNarrationSettings"
 
 const mockRouter = { push: jest.fn(), back: jest.fn(), dismissTo: jest.fn() }
@@ -444,8 +448,15 @@ it("loads the saved key, discovers models, and clears the key by saving an empty
   await screen.findByLabelText("llm.key")
   expect(screen.getByLabelText("llm.key").props.value).toBe("saved-test-key")
   fireEvent.press(screen.getByText("providerEditor.fetchModels"))
-  fireEvent.press(await screen.findByText("discovered"))
-  fireEvent.press(screen.getByText("providerEditor.addSelected"))
+  await waitFor(() =>
+    expect(mockRouter.push).toHaveBeenCalledWith("/model-discovery"),
+  )
+  const discovery = useModelDiscoveryStore.getState().session
+  expect(discovery?.models.map((item) => item.id)).toEqual(["discovered"])
+  await act(async () => {
+    await discovery?.onAdd(["discovered"])
+    closeModelDiscovery()
+  })
   fireEvent.press(screen.getByText("providerEditor.modelDetails discovered"))
   fireEvent.press(screen.getByText("llm.protocol:responses"))
   fireEvent.changeText(screen.getByLabelText("llm.context"), "65536")

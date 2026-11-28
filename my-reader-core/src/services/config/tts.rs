@@ -6,8 +6,8 @@ use url::Url;
 use crate::{
     infrastructure::tts,
     models::{
-        TtsConfig, TtsEngineSelection, TtsPlaybackPreferences, TtsProviderKind, TtsProviderProfile,
-        TtsVoiceRef, TTS_CONFIG_SCHEMA_VERSION,
+        TtsConfig, TtsEngineSelection, TtsPlaybackPreferences, TtsProviderProfile, TtsVoiceRef,
+        TTS_CONFIG_SCHEMA_VERSION,
     },
     CoreError, TtsErrorKind,
 };
@@ -98,7 +98,7 @@ pub(crate) fn validate_profile(profile: &TtsProviderProfile) -> Result<(), CoreE
     let endpoint = Url::parse(profile.endpoint.trim())
         .map_err(|_| tts_error(TtsErrorKind::Configuration, "INVALID_TTS_ENDPOINT"))?;
     if !(matches!(endpoint.scheme(), "http" | "https")
-        || profile.kind == TtsProviderKind::Qwen && matches!(endpoint.scheme(), "ws" | "wss"))
+        || profile.kind.supports_websocket() && matches!(endpoint.scheme(), "ws" | "wss"))
     {
         return Err(tts_error(
             TtsErrorKind::Configuration,
@@ -117,9 +117,7 @@ pub(crate) fn validate_profile(profile: &TtsProviderProfile) -> Result<(), CoreE
     if profile.model.as_deref().is_none_or(str::is_empty) {
         return Err(tts_error(TtsErrorKind::Configuration, "TTS_MODEL_REQUIRED"));
     }
-    if profile.kind == TtsProviderKind::Qwen {
-        tts::qwen::validate_profile(profile)?;
-    }
+    tts::validate_profile(profile)?;
     Ok(())
 }
 

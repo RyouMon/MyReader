@@ -25,6 +25,11 @@
     "automatic": "Automatisch",
     "noNewModels": "Alle verfügbaren Modelle wurden hinzugefügt",
     "addSelected": "Ausgewählte Modelle hinzufügen",
+    "selectModels": "Verfügbare Modelle auswählen",
+    "searchModels": "Modelle durchsuchen",
+    "noMatchingModels": "Keine passenden Modelle",
+    "modelAdded": "Hinzugefügt",
+    "selectedCount": "{{count}} ausgewählt",
     "audioFormat": "Audioformat",
     "voiceId": "Stimmen-ID",
     "removeVoice": "Stimme entfernen",
@@ -145,6 +150,20 @@
   "qwenTts": {
     "title": "Qwen",
     "add": "{{name}} hinzufügen"
+  },
+  "ttsProviders": {
+    "volcengine": "Volcengine (Doubao)",
+    "volcengineCredentialHint": "API-Schlüssel oder AppID:AccessKey",
+    "credentialRequired": "Für diese Aktion sind Zugangsdaten erforderlich.",
+    "endpointSuggestions": "Vorgeschlagene Dienstadressen",
+    "endpoints": {
+      "china": "China",
+      "international": "International",
+      "dashscopeChina": "DashScope (China)",
+      "dashscopeInternational": "DashScope (International)",
+      "qianwen": "Qianwen",
+      "qwenTokenPlan": "Qwen Token Plan"
+    }
   },
   "addLibraryFlow": {
     "title": "Bibliothek hinzufügen",

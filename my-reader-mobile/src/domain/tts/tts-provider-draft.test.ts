@@ -1,4 +1,5 @@
 import {
+  mergeSharedVoices,
   mergeVoices,
   newTtsDraft,
   newTtsModel,
@@ -66,5 +67,32 @@ describe("TTS provider drafts", () => {
         }),
       }),
     )
+  })
+
+  it("prefills native provider defaults and populates discovered voice display names", () => {
+    const gemini = newTtsDraft("gemini")
+    expect(gemini).toMatchObject({
+      kind: "gemini",
+      endpoint: "https://generativelanguage.googleapis.com",
+      modelScopedVoices: false,
+    })
+    expect(gemini.models[0]?.responseFormat).toBe("wav")
+
+    const volcengine = newTtsDraft("volcengine", "火山引擎（豆包语音）")
+    expect(volcengine.modelScopedVoices).toBe(true)
+    expect(volcengine.name).toBe("火山引擎（豆包语音）")
+
+    const merged = mergeSharedVoices(
+      { ...gemini, voices: ["Kore"], voiceNames: { Kore: "My Kore" } },
+      [
+        { id: "Kore", name: "Kore", language: "mul" },
+        { id: "Puck", name: "Puck (Upbeat)", language: "mul" },
+      ],
+    )
+    expect(merged.voices).toEqual(["Kore", "Puck"])
+    expect(merged.voiceNames).toEqual({
+      Kore: "My Kore",
+      Puck: "Puck (Upbeat)",
+    })
   })
 })

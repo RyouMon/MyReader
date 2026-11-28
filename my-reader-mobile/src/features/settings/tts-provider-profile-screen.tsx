@@ -1,68 +1,130 @@
+import {
+  TTS_PROVIDER_KINDS,
+  ttsEndpointSuggestions,
+  ttsProviderMeta,
+} from "@my-reader/tools/tts-providers"
 import { ttsUsageMessage } from "@my-reader/tools/tts-selection-usage"
+import { router, Stack, useLocalSearchParams } from "expo-router"
+import { useCallback, useEffect, useMemo, useState } from "react"
+import { useTranslation } from "react-i18next"
+import { ActivityIndicator } from "react-native"
+import {
+  ListRow,
+  Screen,
+  SectionCard,
+  SectionLabel,
+  SuggestionsOverlayHost,
+} from "@/src/components"
+import { useFormValidation } from "@/src/components/ui/use-form-validation"
+import { showErrorAlert } from "@/src/constants/alert-with-status-bar"
+import { useThemePalette } from "@/src/design/tokens"
+import {
+  detectMobileTtsRegionContext,
+  newTtsDraft,
+  type TtsProviderDraft,
+} from "@/src/domain/tts/tts-provider-draft"
 import {
   TtsRemovalContext,
   useTtsRemovalConfirmation,
 } from "@/src/domain/tts/use-tts-removal-confirmation"
-import { router, Stack, useLocalSearchParams } from "expo-router"
-import { useCallback, useEffect, useState } from "react"
-import { useTranslation } from "react-i18next"
-import { ActivityIndicator } from "react-native"
-import { ListRow, Screen, SectionCard, SectionLabel } from "@/src/components"
-import { showErrorAlert } from "@/src/constants/alert-with-status-bar"
-import { useThemePalette } from "@/src/design/tokens"
-import {
-  newTtsDraft,
-  newTtsModel,
-  type TtsProviderDraft,
-} from "@/src/domain/tts/tts-provider-draft"
+import { errorMessage } from "@/src/i18n/error-message"
+import { useDeleteAction } from "@/src/navigation/hooks/use-delete-action"
 import { useScreenHeader } from "@/src/navigation/hooks/use-screen-header"
 import { createSaveAction } from "@/src/navigation/toolbar-action-helpers"
 import {
-  getTtsConfig,
   getTtsChangeUsage,
+  getTtsConfig,
   getTtsCredential,
-  saveTtsProvider,
   removeTtsProfile,
+  saveTtsProvider,
 } from "@/src/services/core/tts"
-import { errorMessage } from "@/src/i18n/error-message"
 import { View } from "@/tw"
 import { ProviderConnectionFields } from "./provider-connection-fields"
-import { TtsProviderModels } from "./tts-provider-models"
-import { useFormValidation } from "@/src/components/ui/use-form-validation"
 import { ttsFormErrors } from "./provider-validation"
-import { useDeleteAction } from "@/src/navigation/hooks/use-delete-action"
+import { TtsProviderModels } from "./tts-provider-models"
+import type { TtsDraftUpdater } from "./tts-voices-editor"
+
+const EMPTY_ERRORS: Record<string, string> = {}
+
+function providerKindLabel(kind: string, t: import("i18next").TFunction) {
+  if (kind === "openAiCompatible")
+    return t("settings.tts.providerKinds.openAiCompatible")
+  if (kind === "volcengine") return t("ttsProviders.volcengine")
+  return ttsProviderMeta(kind).defaultName
+}
 
 function ProviderForm({
   draft,
-  onChange,
+  onUpdateDraft,
   validation,
 }: {
   draft: TtsProviderDraft
-  onChange: (value: TtsProviderDraft) => void
+  onUpdateDraft: TtsDraftUpdater
   validation: ReturnType<typeof useFormValidation>
 }) {
+  const { t } = useTranslation()
+  const [credentialError, setCredentialError] = useState<string | null>(null)
+  useEffect(() => {
+    setCredentialError(null)
+  }, [draft.id, draft.kind])
+  const endpointSuggestions = useMemo(
+    () =>
+      ttsEndpointSuggestions(draft.kind, detectMobileTtsRegionContext()).map(
+        (item) => ({
+          value: item.url,
+          label: item.labelKey
+            ? t(item.labelKey)
+            : (item.fallbackLabel ?? item.url),
+        }),
+      ),
+    [draft.kind, t],
+  )
+  const credentialPlaceholder =
+    draft.kind === "volcengine"
+      ? t("ttsProviders.volcengineCredentialHint")
+      : draft.kind === "openAiCompatible"
+        ? t("settings.tts.credentialPlaceholder")
+        : undefined
+  const handleConnectionChange = useCallback(
+    (connection: { name: string; endpoint: string; credential: string }) => {
+      if (connection.credential !== draft.credential) {
+        setCredentialError(null)
+      }
+      onUpdateDraft((prev) => ({
+        ...prev,
+        ...connection,
+        clearCredential: !connection.credential.trim(),
+      }))
+    },
+    [draft.credential, onUpdateDraft],
+  )
+  const handleCredentialRequired = useCallback(() => {
+    setCredentialError(t("ttsProviders.credentialRequired"))
+  }, [t])
+
+  const connectionHeader = (
+    <ProviderConnectionFields
+      kind="tts"
+      value={draft}
+      credentialPlaceholder={credentialPlaceholder}
+      credentialError={credentialError ?? undefined}
+      endpointSuggestions={endpointSuggestions}
+      endpointSuggestionsLabel={t("ttsProviders.endpointSuggestions")}
+      validation={validation}
+      onChange={handleConnectionChange}
+    />
+  )
+
   return (
-    <Screen>
-      <View className="gap-3">
-        <ProviderConnectionFields
-          kind="tts"
-          value={draft}
-          validation={validation}
-          onChange={(connection) =>
-            onChange({
-              ...draft,
-              ...connection,
-              clearCredential: !connection.credential.trim(),
-            })
-          }
-        />
-        <TtsProviderModels
-          draft={draft}
-          onChange={onChange}
-          validation={validation}
-        />
-      </View>
-    </Screen>
+    <SuggestionsOverlayHost testID="tts-suggestions-host">
+      <TtsProviderModels
+        header={connectionHeader}
+        draft={draft}
+        onUpdateDraft={onUpdateDraft}
+        onCredentialRequired={handleCredentialRequired}
+        validation={validation}
+      />
+    </SuggestionsOverlayHost>
   )
 }
 
@@ -73,25 +135,19 @@ function ProviderTypeList() {
       <View className="gap-3">
         <SectionLabel>{t("settings.tts.providerTypeSection")}</SectionLabel>
         <SectionCard>
-          <ListRow
-            title={t("settings.tts.providerKinds.openAiCompatible")}
-            onPress={() =>
-              router.push({
-                pathname: "/tts-providers/form",
-                params: { kind: "openAiCompatible" },
-              })
-            }
-          />
-          <ListRow
-            title="Qwen"
-            isLast
-            onPress={() =>
-              router.push({
-                pathname: "/tts-providers/form",
-                params: { kind: "qwen" },
-              })
-            }
-          />
+          {TTS_PROVIDER_KINDS.map((kind, index) => (
+            <ListRow
+              key={kind}
+              title={providerKindLabel(kind, t)}
+              isLast={index === TTS_PROVIDER_KINDS.length - 1}
+              onPress={() =>
+                router.push({
+                  pathname: "/tts-providers/form",
+                  params: { kind },
+                })
+              }
+            />
+          ))}
         </SectionCard>
       </View>
     </Screen>
@@ -107,23 +163,23 @@ export default function TtsProviderProfileScreen() {
   }>()
   const [draft, setDraft] = useState<TtsProviderDraft | null>(() => {
     if (providerId || !kind) return null
-    return kind === "qwen"
-      ? {
-          ...newTtsDraft(),
-          kind: "qwen",
-          name: "Qwen",
-          endpoint: "",
-          modelScopedVoices: true,
-          models: [{ ...newTtsModel(), responseFormat: "wav" }],
-          voices: [],
-        }
-      : newTtsDraft()
+    return newTtsDraft(
+      kind,
+      kind === "volcengine" ? t("ttsProviders.volcengine") : undefined,
+    )
   })
   const [loading, setLoading] = useState(Boolean(providerId))
   const [saving, setSaving] = useState(false)
   const [removing, setRemoving] = useState(false)
   const confirmRemoval = useTtsRemovalConfirmation()
-  const validation = useFormValidation(draft ? ttsFormErrors(draft, t) : {})
+  const formErrors = useMemo(
+    () => (draft ? ttsFormErrors(draft, t) : EMPTY_ERRORS),
+    [draft, t],
+  )
+  const validation = useFormValidation(formErrors)
+  const updateDraft = useCallback<TtsDraftUpdater>((updater) => {
+    setDraft((prev) => (prev ? updater(prev) : prev))
+  }, [])
   useEffect(() => {
     if (!providerId) return
     let active = true
@@ -218,7 +274,7 @@ export default function TtsProviderProfileScreen() {
       ) : draft ? (
         <ProviderForm
           draft={draft}
-          onChange={setDraft}
+          onUpdateDraft={updateDraft}
           validation={validation}
         />
       ) : null}
@@ -234,6 +290,8 @@ function providerTitle(
 ) {
   if (choosingType) return t("settings.tts.addProvider")
   if (providerId) return t("settings.tts.editProvider")
-  if (draft?.kind === "qwen") return t("qwenTts.add", { name: draft.name })
-  return t("settings.tts.addOpenAi")
+  if (draft?.kind === "openAiCompatible") return t("settings.tts.addOpenAi")
+  return t("qwenTts.add", {
+    name: draft ? providerKindLabel(draft.kind, t) : "",
+  })
 }

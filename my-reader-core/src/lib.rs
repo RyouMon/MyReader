@@ -18,7 +18,7 @@ pub use error::{CoreError, TtsErrorKind};
 
 #[cfg(feature = "test-support")]
 pub mod test_support {
-    pub use crate::database::open_db;
+    pub use crate::database::{open_db, sqlite_file_url};
     pub use crate::sync::{document, persistence};
 
     pub mod entities {

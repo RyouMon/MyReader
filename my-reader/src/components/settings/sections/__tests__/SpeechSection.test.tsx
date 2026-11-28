@@ -20,7 +20,7 @@ import {
   within,
   waitFor,
 } from "@testing-library/react"
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import userEvent from "@testing-library/user-event"
 
 import type { QwenTtsModelDto, TtsConfigDto } from "@/lib/tauri-specta"
@@ -31,6 +31,7 @@ const mocks = vi.hoisted(() => ({
   getTtsChangeUsage: vi.fn().mockResolvedValue([]),
   setTtsPlaybackPreferences: vi.fn(),
   discoverTtsModels: vi.fn(),
+  discoverTtsVoices: vi.fn(),
   listQwenTtsModels: vi.fn(),
   getTtsCredential: vi.fn().mockResolvedValue("fixture-key"),
   discoverQwenTtsVoices: vi.fn(),
@@ -47,6 +48,7 @@ vi.mock("@/lib/tauri-api", () => ({
     getTtsChangeUsage: mocks.getTtsChangeUsage,
     setTtsPlaybackPreferences: mocks.setTtsPlaybackPreferences,
     discoverTtsModels: mocks.discoverTtsModels,
+    discoverTtsVoices: mocks.discoverTtsVoices,
     listQwenTtsModels: mocks.listQwenTtsModels,
     getTtsCredential: mocks.getTtsCredential,
     discoverQwenTtsVoices: mocks.discoverQwenTtsVoices,
@@ -104,8 +106,26 @@ class ResizeObserverMock {
   disconnect() {}
 }
 
+let mockedRegion = { timeZone: "Asia/Shanghai", locale: "zh-CN" }
+const originalDateTimeFormat = Intl.DateTimeFormat
+
+function mockRuntimeRegion(timeZone: string, locale = "en-US") {
+  mockedRegion = { timeZone, locale }
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
+  mockedRegion = { timeZone: "Asia/Shanghai", locale: "zh-CN" }
+  vi.spyOn(Intl, "DateTimeFormat").mockImplementation((...args) => {
+    const formatter = new originalDateTimeFormat(...args)
+    const originalResolvedOptions = formatter.resolvedOptions.bind(formatter)
+    formatter.resolvedOptions = () => ({
+      ...originalResolvedOptions(),
+      timeZone: mockedRegion.timeZone,
+      locale: mockedRegion.locale,
+    })
+    return formatter
+  })
   vi.stubGlobal(
     "Audio",
     class {
@@ -120,6 +140,7 @@ beforeEach(() => {
   mocks.testTtsProvider.mockResolvedValue({ path: "/tmp/preview.mp3" })
   mocks.cancelTtsSynthesis.mockResolvedValue(undefined)
   mocks.discoverTtsModels.mockResolvedValue([])
+  mocks.discoverTtsVoices.mockResolvedValue([])
   vi.stubGlobal("ResizeObserver", ResizeObserverMock)
   HTMLElement.prototype.scrollIntoView = vi.fn()
   mocks.getTtsConfig.mockResolvedValue(config)
@@ -140,12 +161,18 @@ beforeEach(() => {
   mocks.removeTtsProfile.mockResolvedValue(config)
 })
 
+afterEach(() => {
+  vi.restoreAllMocks()
+})
+
 async function importQwenModel(
   name: RegExp = /qwen-audio-3.0-tts-plus/,
-  endpoint = presets[0].endpoint,
+  endpoint?: string,
 ) {
   const address = screen.getByLabelText(/服务器地址\s*\*?$/) as HTMLInputElement
-  if (!address.value) fireEvent.change(address, { target: { value: endpoint } })
+  if (endpoint && address.value !== endpoint) {
+    fireEvent.change(address, { target: { value: endpoint } })
+  }
   fireEvent.click(screen.getByRole("button", { name: "获取可用模型" }))
   fireEvent.click(await screen.findByRole("checkbox", { name }))
   fireEvent.click(screen.getByRole("button", { name: "添加所选模型" }))
@@ -205,7 +232,9 @@ describe("SpeechSection", () => {
     expect(form.getAllByLabelText(/声音 ID\s*\*?$/)).toHaveLength(1)
     expect(form.getByLabelText(/声音 ID\s*\*?$/)).toHaveValue("")
     expect(form.getByLabelText(/^名称\s*\*?$/)).toHaveValue(title)
-    expect(form.getByLabelText(/服务器地址\s*\*?$/)).toHaveValue("")
+    expect(form.getByLabelText(/服务器地址\s*\*?$/)).toHaveValue(
+      "https://dashscope.aliyuncs.com/api/v1",
+    )
     fireEvent.change(form.getByLabelText(/服务器地址\s*\*?$/), {
       target: { value: preset.endpoint },
     })
@@ -266,7 +295,7 @@ describe("SpeechSection", () => {
       screen.getByLabelText("API 密钥或访问令牌"),
       "sk-sp-fixture",
     )
-    await importQwenModel()
+    await importQwenModel(/qwen-audio-3.0-tts-plus/, presets[0].endpoint)
     await user.type(
       screen.getByLabelText(/声音 ID\s*\*?$/),
       "subscription-voice",
@@ -293,7 +322,7 @@ describe("SpeechSection", () => {
     })
     await waitFor(() => expect(choice).toBeEnabled())
     fireEvent.click(choice)
-    await importQwenModel()
+    await importQwenModel(/qwen-audio-3.0-tts-plus/, presets[0].endpoint)
     const form = within(screen.getByRole("dialog"))
     expect(form.getByLabelText(/模型 ID\s*\*?$/)).toHaveValue(
       "qwen-audio-3.0-tts-plus",
@@ -981,4 +1010,194 @@ it("confirms provider deletion before removing it and notifying readers", async 
     expect(screen.queryByText("待删除的语音服务")).not.toBeInTheDocument(),
   )
   expect(mocks.notifyTtsConfigChanged).toHaveBeenCalledOnce()
+})
+
+it("lists all native TTS providers, discovers shared voices with display names, and saves MiniMax", async () => {
+  mocks.discoverTtsVoices.mockResolvedValue([
+    {
+      id: "male-qn-qingse",
+      name: "青涩青年",
+      language: "zh-CN",
+      gender: null,
+    },
+  ])
+  const user = userEvent.setup()
+  render(<TtsProvidersSection />)
+  await user.click(await screen.findByRole("button", { name: "添加语音服务" }))
+  const picker = within(screen.getByRole("dialog"))
+  for (const label of [
+    "添加 OpenAI 兼容服务",
+    "Qwen",
+    "MiniMax",
+    "火山引擎（豆包语音）",
+    "ElevenLabs",
+    "Fish Audio",
+    "Google Gemini",
+  ]) {
+    expect(picker.getByRole("button", { name: label })).toBeInTheDocument()
+  }
+
+  await user.click(picker.getByRole("button", { name: "MiniMax" }))
+  const form = within(screen.getByRole("dialog"))
+  expect(form.getByLabelText(/服务器地址\s*\*?$/)).toHaveValue(
+    "https://api.minimaxi.com",
+  )
+  expect(form.getByLabelText(/模型 ID\s*\*?$/)).toHaveValue("speech-2.8-turbo")
+  expect(
+    form.queryByRole("switch", { name: "音色按模型配置" }),
+  ).not.toBeInTheDocument()
+  await user.type(form.getByLabelText("API 密钥或访问令牌"), "mm-key")
+  await user.click(form.getByRole("button", { name: "获取声音" }))
+  await waitFor(() =>
+    expect(form.getByLabelText(/声音 ID\s*\*?$/)).toHaveValue("male-qn-qingse"),
+  )
+  expect(form.getByLabelText("显示名称")).toHaveValue("青涩青年")
+
+  await user.click(form.getByRole("button", { name: "保存" }))
+  await waitFor(() =>
+    expect(mocks.saveTtsProvider).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: expect.objectContaining({
+          kind: "miniMax",
+          endpoint: "https://api.minimaxi.com",
+          voices: ["male-qn-qingse"],
+          voiceNames: { "male-qn-qingse": "青涩青年" },
+        }),
+        credential: "mm-key",
+      }),
+    ),
+  )
+})
+
+it("configures Volcengine with model-scoped voices and dual-auth credential hint", async () => {
+  const user = userEvent.setup()
+  render(<TtsProvidersSection />)
+  await user.click(await screen.findByRole("button", { name: "添加语音服务" }))
+  await user.click(screen.getByRole("button", { name: "火山引擎（豆包语音）" }))
+  const form = within(screen.getByRole("dialog"))
+  expect(form.getByLabelText(/^名称\s*\*?$/)).toHaveValue(
+    "火山引擎（豆包语音）",
+  )
+  expect(form.getByLabelText(/服务器地址\s*\*?$/)).toHaveValue(
+    "https://openspeech.bytedance.com/api/v3/tts/unidirectional",
+  )
+  expect(form.getByLabelText(/模型 ID\s*\*?$/)).toHaveValue("seed-tts-2.0")
+  expect(form.getByLabelText("API 密钥或访问令牌")).toHaveAttribute(
+    "placeholder",
+    "API Key 或 AppID:AccessKey",
+  )
+  expect(
+    form.queryByRole("switch", { name: "音色按模型配置" }),
+  ).not.toBeInTheDocument()
+})
+
+it("prefills international endpoints for Qwen and MiniMax outside Mainland China and offers blank-field suggestions", async () => {
+  mockRuntimeRegion("America/New_York", "zh-CN")
+  const user = userEvent.setup()
+  render(<TtsProvidersSection />)
+  await user.click(await screen.findByRole("button", { name: "添加语音服务" }))
+  await user.click(screen.getByRole("button", { name: "MiniMax" }))
+  const dialog = screen.getByRole("dialog")
+  const form = within(dialog)
+  const endpoint = form.getByLabelText(/服务器地址\s*\*?$/)
+  expect(endpoint).toHaveValue("https://api.minimax.io")
+  expect(within(dialog).queryByRole("listbox")).not.toBeInTheDocument()
+
+  await user.clear(endpoint)
+  await user.click(endpoint)
+  const minimaxSuggestions = within(dialog).getByRole("listbox", {
+    name: "建议服务地址",
+  })
+  expect(
+    within(minimaxSuggestions)
+      .getAllByRole("option")
+      .map((option) => option.textContent),
+  ).toEqual([
+    expect.stringContaining("https://api.minimax.io"),
+    expect.stringContaining("https://api.minimaxi.com"),
+  ])
+  await user.type(endpoint, "h")
+  expect(within(dialog).queryByRole("listbox")).not.toBeInTheDocument()
+
+  await user.clear(endpoint)
+  await user.click(endpoint)
+  await user.click(
+    within(dialog).getByRole("option", {
+      name: /https:\/\/api\.minimaxi\.com/,
+    }),
+  )
+  expect(endpoint).toHaveValue("https://api.minimaxi.com")
+  expect(within(dialog).queryByRole("listbox")).not.toBeInTheDocument()
+
+  await user.click(form.getByRole("button", { name: "返回" }))
+  await user.click(form.getByRole("button", { name: "Qwen" }))
+  const qwenEndpoint = form.getByLabelText(/服务器地址\s*\*?$/)
+  expect(qwenEndpoint).toHaveValue("https://dashscope-intl.aliyuncs.com/api/v1")
+  await user.clear(qwenEndpoint)
+  await user.click(qwenEndpoint)
+  await user.click(
+    within(dialog).getByRole("option", {
+      name: /wss:\/\/token-plan\.maas\.qianwenaiapi\.com\/api-ws\/v1\/inference/,
+    }),
+  )
+  expect(qwenEndpoint).toHaveValue(
+    "wss://token-plan.maas.qianwenaiapi.com/api-ws/v1/inference",
+  )
+})
+
+it("shows inline credential field errors instead of generic errors when model discovery, voice discovery, or preview require a credential", async () => {
+  const credentialRequiredError = {
+    kind: "Credential",
+    message:
+      "CREDENTIAL_ERROR: TTS_ERROR: unauthorized:TTS_CREDENTIAL_REQUIRED",
+  }
+  mocks.listQwenTtsModels.mockRejectedValue(credentialRequiredError)
+  mocks.discoverTtsVoices.mockRejectedValue(credentialRequiredError)
+  mocks.testTtsProvider.mockRejectedValue(credentialRequiredError)
+
+  const user = userEvent.setup()
+  render(<TtsProvidersSection />)
+  await user.click(await screen.findByRole("button", { name: "添加语音服务" }))
+  await user.click(screen.getByRole("button", { name: "Qwen" }))
+  const dialog = within(screen.getByRole("dialog"))
+  const credential = dialog.getByLabelText("API 密钥或访问令牌")
+
+  await user.click(dialog.getByRole("button", { name: "获取可用模型" }))
+  await waitFor(() =>
+    expect(credential).toHaveAttribute("aria-invalid", "true"),
+  )
+  expect(credential).toHaveAccessibleDescription("该操作需要填写访问凭据。")
+  expect(dialog.queryByText(/TTS_CREDENTIAL_REQUIRED/)).not.toBeInTheDocument()
+
+  await user.type(credential, "k")
+  expect(credential).toHaveAttribute("aria-invalid", "false")
+
+  await user.click(dialog.getByRole("button", { name: "返回" }))
+  await user.click(dialog.getByRole("button", { name: "MiniMax" }))
+  const miniMaxCredential = dialog.getByLabelText("API 密钥或访问令牌")
+
+  await user.click(dialog.getByRole("button", { name: "获取声音" }))
+  await waitFor(() =>
+    expect(miniMaxCredential).toHaveAttribute("aria-invalid", "true"),
+  )
+  expect(miniMaxCredential).toHaveAccessibleDescription(
+    "该操作需要填写访问凭据。",
+  )
+  expect(dialog.queryByText(/TTS_CREDENTIAL_REQUIRED/)).not.toBeInTheDocument()
+
+  await user.type(miniMaxCredential, "x")
+  await user.clear(miniMaxCredential)
+  expect(miniMaxCredential).toHaveAttribute("aria-invalid", "false")
+
+  const voiceInput = dialog.getByLabelText(/声音 ID\s*\*?$/)
+  fireEvent.change(voiceInput, { target: { value: "male-qn-qingse" } })
+  await user.click(dialog.getByRole("button", { name: "测试 male-qn-qingse" }))
+  await waitFor(() =>
+    expect(miniMaxCredential).toHaveAttribute("aria-invalid", "true"),
+  )
+  expect(miniMaxCredential).toHaveAccessibleDescription(
+    "该操作需要填写访问凭据。",
+  )
+  expect(voiceInput).toHaveAttribute("aria-invalid", "false")
+  expect(dialog.queryByText(/TTS_CREDENTIAL_REQUIRED/)).not.toBeInTheDocument()
 })

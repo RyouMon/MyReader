@@ -271,10 +271,7 @@ mod tests {
     }
 
     async fn create_calibre_metadata(root: &Path) {
-        let url = format!(
-            "sqlite://{}?mode=rwc",
-            root.join("metadata.db").to_string_lossy()
-        );
+        let url = my_reader_core::test_support::sqlite_file_url(&root.join("metadata.db"), "rwc");
         let db = Database::connect(&url).await.unwrap();
         db.execute_unprepared(&format!(
             "CREATE TABLE books (

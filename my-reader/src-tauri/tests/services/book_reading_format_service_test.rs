@@ -13,10 +13,7 @@ use crate::common::calibre::{seed_minimal_calibre_library, SeededBook};
 async fn seed_format_library(root: &std::path::Path) -> SeededBook {
     let seeded = seed_minimal_calibre_library(root).await;
     let db_path = root.join("metadata.db");
-    let url = format!(
-        "sqlite://{}?mode=rwc",
-        db_path.to_str().expect("valid utf8")
-    );
+    let url = my_reader_core::test_support::sqlite_file_url(&db_path, "rwc");
     let db = sea_orm::Database::connect(&url)
         .await
         .expect("connect to setup db");

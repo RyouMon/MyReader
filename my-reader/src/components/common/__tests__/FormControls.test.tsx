@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event"
 import { expect, it, vi } from "vitest"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { FormSelect, FormSelectItem } from "../FormSelect"
+import { FormSuggestionField } from "../FormSuggestionField"
 import { FormSwitch } from "../FormSwitch"
 
 function SelectDialog() {
@@ -196,4 +197,58 @@ it("associates the switch label and description and respects disabled state", as
   )
   await user.click(screen.getByText("Model voices"))
   expect(change).not.toHaveBeenCalled()
+})
+
+function SuggestionDialog({ initial = "" }: { initial?: string }) {
+  const [open, setOpen] = useState(true)
+  const [value, setValue] = useState(initial)
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogContent>
+        <DialogTitle>Endpoint</DialogTitle>
+        <FormSuggestionField
+          id="endpoint"
+          label="Service URL"
+          value={value}
+          onValueChange={setValue}
+          suggestionsLabel="Suggested URLs"
+          suggestions={[
+            { label: "China", value: "https://api.minimaxi.com" },
+            { label: "International", value: "https://api.minimax.io" },
+          ]}
+        />
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+it("shows suggestions only when blank, closes on typing or Escape without closing the dialog, and fills on select", async () => {
+  const user = userEvent.setup()
+  render(<SuggestionDialog />)
+  const dialog = screen.getByRole("dialog")
+  const input = within(dialog).getByLabelText("Service URL")
+
+  await user.click(input)
+  const listbox = within(dialog).getByRole("listbox", {
+    name: "Suggested URLs",
+  })
+  expect(within(listbox).getAllByRole("option")).toHaveLength(2)
+
+  await user.keyboard("{Escape}")
+  expect(screen.queryByRole("listbox")).not.toBeInTheDocument()
+  expect(screen.getByRole("dialog")).toBeInTheDocument()
+
+  await user.click(input)
+  expect(within(dialog).getByRole("listbox")).toBeInTheDocument()
+
+  await user.type(input, "h")
+  expect(screen.queryByRole("listbox")).not.toBeInTheDocument()
+
+  await user.clear(input)
+  await user.click(input)
+  await user.click(
+    within(dialog).getByRole("option", { name: /International/ }),
+  )
+  expect(input).toHaveValue("https://api.minimax.io")
+  expect(screen.queryByRole("listbox")).not.toBeInTheDocument()
 })

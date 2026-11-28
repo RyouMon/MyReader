@@ -25,6 +25,11 @@
     "automatic": "自動",
     "noNewModels": "可用模型均已新增",
     "addSelected": "新增所選模型",
+    "selectModels": "選擇可用模型",
+    "searchModels": "搜尋模型",
+    "noMatchingModels": "沒有符合的模型",
+    "modelAdded": "已新增",
+    "selectedCount": "已選 {{count}} 項",
     "audioFormat": "音訊格式",
     "voiceId": "聲音 ID",
     "removeVoice": "刪除聲音",
@@ -145,6 +150,20 @@
   "qwenTts": {
     "title": "Qwen（通義千問）",
     "add": "新增 {{name}}"
+  },
+  "ttsProviders": {
+    "volcengine": "火山引擎（豆包語音）",
+    "volcengineCredentialHint": "API Key 或 AppID:AccessKey",
+    "credentialRequired": "此操作需要填寫存取憑證。",
+    "endpointSuggestions": "建議服務位址",
+    "endpoints": {
+      "china": "中國大陸站",
+      "international": "國際站",
+      "dashscopeChina": "百煉（中國大陸站）",
+      "dashscopeInternational": "百煉（國際站）",
+      "qianwen": "千問平台",
+      "qwenTokenPlan": "千問 Token Plan"
+    }
   },
   "addLibraryFlow": {
     "title": "新增書庫",

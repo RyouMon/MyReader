@@ -338,6 +338,19 @@ pub async fn discover_tts_models<R: tauri::Runtime>(
 
 #[tauri::command]
 #[specta::specta]
+pub async fn discover_tts_voices<R: tauri::Runtime>(
+    app: AppHandle<R>,
+    input: UpsertTtsProviderInput,
+) -> Result<Vec<TtsVoiceDto>, AppError> {
+    DesktopTtsService::discover_voices(
+        &crate::config::config_path(&common::app_data_dir(&app)?),
+        input,
+    )
+    .await
+}
+
+#[tauri::command]
+#[specta::specta]
 pub async fn get_tts_change_usage<R: tauri::Runtime>(
     app: AppHandle<R>,
     provider_id: String,

@@ -1,11 +1,11 @@
 import { normalizeTtsLanguage } from "@my-reader/tools/reader-tts-language"
-import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio"
 import * as Speech from "expo-speech"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { ttsMaximumPlaybackSpeed } from "@/src/constants/tts"
 
 import { type MobileTtsConfig, synthesizeTts } from "@/src/services/core/tts"
 import { toFileUri } from "@/src/services/fs/path"
+import { usePreviewAudioPlayer } from "./use-preview-audio-player"
 
 const PREVIEW_MIME_TYPES = [
   "audio/mpeg",
@@ -46,12 +46,30 @@ export function useTtsPreview({
   const [state, setState] = useState<TtsPreviewState>("idle")
   const [previewVoiceId, setPreviewVoiceId] = useState<string | null>(null)
   const systemActiveRef = useRef(false)
-  const [source, setSource] = useState<string | null>(null)
-  const player = useAudioPlayer(source)
-  const status = useAudioPlayerStatus(player)
   const abortRef = useRef<AbortController | null>(null)
   const generationRef = useRef(0)
-  const playbackRateRef = useRef(1)
+
+  const handlePlaying = useCallback(() => {
+    setState("playing")
+  }, [])
+
+  const handleFinish = useCallback(() => {
+    setState("idle")
+  }, [])
+
+  const handlePlaybackError = useCallback(
+    (error: unknown) => {
+      setState("idle")
+      onError(error)
+    },
+    [onError],
+  )
+
+  const { loadAndPlay, stop: stopAudio } = usePreviewAudioPlayer({
+    onPlaying: handlePlaying,
+    onFinish: handleFinish,
+    onError: handlePlaybackError,
+  })
 
   const stop = useCallback(() => {
     generationRef.current += 1
@@ -60,52 +78,11 @@ export function useTtsPreview({
     if (systemActiveRef.current) void Speech.stop()
     systemActiveRef.current = false
     if (stopActivePreview === stop) stopActivePreview = null
-    setSource(null)
+    stopAudio()
     setState("idle")
-  }, [])
+  }, [stopAudio])
 
   useEffect(() => stop, [stop])
-
-  useEffect(() => {
-    if ((state === "loading" || state === "playing") && status.error) {
-      const error = status.error
-      const timeout = setTimeout(() => {
-        setSource(null)
-        setState("idle")
-        onError(error)
-      }, 0)
-      return () => clearTimeout(timeout)
-    }
-    if (state === "loading" && source && status.isLoaded) {
-      const timeout = setTimeout(() => {
-        try {
-          player.setPlaybackRate(playbackRateRef.current)
-          player.play()
-          setState("playing")
-        } catch (error) {
-          setSource(null)
-          setState("idle")
-          onError(error)
-        }
-      }, 0)
-      return () => clearTimeout(timeout)
-    }
-    if (state === "playing" && status.didJustFinish) {
-      const timeout = setTimeout(() => {
-        setSource(null)
-        setState("idle")
-      }, 0)
-      return () => clearTimeout(timeout)
-    }
-  }, [
-    onError,
-    player,
-    source,
-    state,
-    status.didJustFinish,
-    status.error,
-    status.isLoaded,
-  ])
 
   const start = useCallback(
     async (candidateVoiceId = voiceId, candidateLanguage = voiceLanguage) => {
@@ -166,9 +143,8 @@ export function useTtsPreview({
           return
         }
         abortRef.current = null
-        playbackRateRef.current = artifact.playbackRate ?? 1
-        setSource(toFileUri(artifact.path))
         setState("loading")
+        await loadAndPlay(toFileUri(artifact.path), artifact.playbackRate ?? 1)
       } catch (error) {
         if (controller.signal.aborted || generationRef.current !== generation) {
           return
@@ -181,6 +157,7 @@ export function useTtsPreview({
     [
       config,
       instructions,
+      loadAndPlay,
       onError,
       previewLanguage,
       selectedProfile,

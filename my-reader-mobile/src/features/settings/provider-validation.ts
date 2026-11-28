@@ -1,3 +1,4 @@
+import { ttsProviderMeta } from "@my-reader/tools/tts-providers"
 import type { TFunction } from "i18next"
 import type { LlmProviderSettings } from "@/src/services/core/llm"
 import {
@@ -78,7 +79,7 @@ export function llmFormErrors(draft: LlmProviderSettings, t: TFunction) {
 
 export function ttsFormErrors(draft: TtsProviderDraft, t: TFunction) {
   const errors = {
-    ...providerErrors(draft, t, draft.kind === "qwen"),
+    ...providerErrors(draft, t, ttsProviderMeta(draft.kind).supportsWebSocket),
     ...idErrors(
       draft.models.map((m) => m.model),
       draft.models.map((m) => m.id),

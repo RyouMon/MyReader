@@ -8,6 +8,7 @@
     "./tts-performance": "./src/tts-performance.ts",
     "./llm-progress": "./src/llm-progress.ts",
     "./tts-voice-names": "./src/tts-voice-names.ts",
+    "./tts-providers": "./src/tts-providers.ts",
     "./tts-selection-usage": "./src/tts-selection-usage.ts",
     "./reader-text-index": "./src/reader-text-index.ts",
     "./narration-plan": "./src/narration-plan.ts",

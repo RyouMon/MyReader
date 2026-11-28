@@ -1,5 +1,6 @@
 import { Directory, Paths } from "expo-file-system"
 import { randomUUID } from "expo-crypto"
+import { isTtsProviderKind } from "@my-reader/tools/tts-providers"
 import { runTtsRequest } from "@my-reader/tools/tts-request"
 import {
   ttsGetConfig,
@@ -19,6 +20,7 @@ import {
   ttsSynthesize,
   ttsPreviewProvider,
   ttsDiscoverModels,
+  ttsDiscoverVoices,
   ttsUpsertProfile,
   type TtsAudioArtifact,
   type TtsConfig,
@@ -71,15 +73,23 @@ const ttsCachePath = toNativeFilesystemPath(
 )
 
 async function hydrateConfig(config: TtsConfig): Promise<MobileTtsConfig> {
+  const credentialPresence = new Map<string, Promise<boolean>>()
+  const hasCredentialFor = (reference?: string) => {
+    if (!reference) return Promise.resolve(false)
+    const cached = credentialPresence.get(reference)
+    if (cached) return cached
+    const pending = readTtsCredential(reference).then(Boolean)
+    credentialPresence.set(reference, pending)
+    return pending
+  }
+
   const profiles = await Promise.all(
     config.profiles.map(async (profile) => ({
       ...profile,
       voiceNames: profile.voiceNames
         ? Object.fromEntries(profile.voiceNames)
         : undefined,
-      hasCredential: profile.credentialReference
-        ? Boolean(await readTtsCredential(profile.credentialReference))
-        : false,
+      hasCredential: await hasCredentialFor(profile.credentialReference),
     })),
   )
   const providers = await Promise.all(
@@ -94,9 +104,7 @@ async function hydrateConfig(config: TtsConfig): Promise<MobileTtsConfig> {
           ? Object.fromEntries(model.voiceNames)
           : undefined,
       })),
-      hasCredential: provider.credentialReference
-        ? Boolean(await readTtsCredential(provider.credentialReference))
-        : false,
+      hasCredential: await hasCredentialFor(provider.credentialReference),
     })),
   )
   return { ...config, profiles, providers }
@@ -184,6 +192,17 @@ export async function discoverTtsModels(
   )
 }
 
+export async function discoverTtsVoices(
+  input: UpsertMobileTtsProfileInput,
+  signal?: AbortSignal,
+): Promise<TtsVoice[]> {
+  return ttsDiscoverVoices(
+    draftProfile(input),
+    await draftCredential(input),
+    signal ? { signal } : undefined,
+  )
+}
+
 export async function previewTtsProvider(
   input: UpsertMobileTtsProfileInput,
   text: string,
@@ -203,10 +222,7 @@ export async function previewTtsProvider(
 export async function upsertTtsProfile(
   input: UpsertMobileTtsProfileInput,
 ): Promise<MobileTtsConfig> {
-  if (
-    input.profile.kind !== "openAiCompatible" &&
-    input.profile.kind !== "qwen"
-  ) {
+  if (!isTtsProviderKind(input.profile.kind)) {
     throw new Error(`TTS_PROVIDER_KIND_UNSUPPORTED: ${input.profile.kind}`)
   }
   const current = await ttsGetConfig(appConfigPath)

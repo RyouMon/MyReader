@@ -3,7 +3,10 @@ import { useEffect, useRef, useState } from "react"
 import { router, Stack, useLocalSearchParams } from "expo-router"
 import { useScreenHeader } from "@/src/navigation/hooks/use-screen-header"
 import { randomUUID } from "expo-crypto"
-import { ModelDiscovery } from "./model-discovery"
+import {
+  closeModelDiscovery,
+  openModelDiscovery,
+} from "./model-discovery-session"
 import { ProviderTextField } from "./provider-text-field"
 import { useTranslation } from "react-i18next"
 import { ActivityIndicator } from "react-native"
@@ -226,10 +229,6 @@ function LlmModelList({
   useEffect(() => {
     if (invalidDetails >= 0) setSelected(invalidDetails)
   }, [invalidDetails])
-  const [available, setAvailable] = useState<{
-    source: string
-    ids: string[]
-  } | null>(null)
   const source = JSON.stringify([
     input.profile.id,
     input.profile.endpoint,
@@ -238,7 +237,27 @@ function LlmModelList({
     input.clearCredential,
   ])
   const currentSource = useRef(source)
-  currentSource.current = source
+  const currentDraft = useRef(draft)
+  const activeDiscoverySession = useRef<number | null>(null)
+  useEffect(() => {
+    currentSource.current = source
+    currentDraft.current = draft
+  }, [draft, source])
+  useEffect(() => {
+    if (activeDiscoverySession.current !== null) {
+      closeModelDiscovery(activeDiscoverySession.current)
+      activeDiscoverySession.current = null
+    }
+  }, [source])
+  useEffect(
+    () => () => {
+      if (activeDiscoverySession.current !== null) {
+        closeModelDiscovery(activeDiscoverySession.current)
+        activeDiscoverySession.current = null
+      }
+    },
+    [],
+  )
   const patch = (
     index: number,
     changes: Partial<LlmProviderSettings["models"][number]>,
@@ -259,28 +278,6 @@ function LlmModelList({
   }
   return (
     <View className="gap-3">
-      {available?.source === source ? (
-        <ModelDiscovery
-          models={available.ids.map((id) => ({ id }))}
-          existing={draft.models.map((model) => model.model)}
-          onClose={() => setAvailable(null)}
-          onAdd={(ids) => {
-            onChange({
-              ...draft,
-              models: [
-                ...draft.models.filter((model) => model.model.trim()),
-                ...ids
-                  .filter(
-                    (id) => !draft.models.some((model) => model.model === id),
-                  )
-                  .map(newModel),
-              ],
-            })
-            setAvailable(null)
-            setSelected(null)
-          }}
-        />
-      ) : null}
       <ProviderModels
         models={draft.models}
         validation={validation}
@@ -311,8 +308,38 @@ function LlmModelList({
             onPress={() =>
               models.mutate(input, {
                 onSuccess: (ids) => {
-                  if (source === currentSource.current)
-                    setAvailable({ source, ids })
+                  if (source !== currentSource.current) return
+                  const latest = currentDraft.current
+                  const sessionId = openModelDiscovery({
+                    models: ids.map((id) => ({ id })),
+                    existing: latest.models.map((model) => model.model),
+                    onAdd: (chosen) => {
+                      const current = currentDraft.current
+                      onChange({
+                        ...current,
+                        models: [
+                          ...current.models.filter((model) =>
+                            model.model.trim(),
+                          ),
+                          ...chosen
+                            .filter(
+                              (id) =>
+                                !current.models.some(
+                                  (model) => model.model === id,
+                                ),
+                            )
+                            .map(newModel),
+                        ],
+                      })
+                      setSelected(null)
+                    },
+                    onClose: () => {
+                      if (activeDiscoverySession.current === sessionId) {
+                        activeDiscoverySession.current = null
+                      }
+                    },
+                  })
+                  activeDiscoverySession.current = sessionId
                 },
               })
             }
